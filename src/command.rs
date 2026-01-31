@@ -6,7 +6,7 @@ use std::process::Command;
 
 use crate::command::builtin::{change_directory, exit_shell, get_working_directory};
 
-mod builtin;
+pub mod builtin;
 
 /// Processes the command depending on its type, 
 /// like if it's a special command (exit, cd...), a pipe, or another command
