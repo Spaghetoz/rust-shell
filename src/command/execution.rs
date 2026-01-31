@@ -14,50 +14,52 @@ impl Command {
     /// like if it's a simple command, special command (exit, cd...), a pipe, etc...
     pub fn execute(&self) -> Result<(), Box<dyn std::error::Error>>{
     
-        let Command::SimpleCommand{path: cmd_path, args: cmd_args} = self;
-        
-        match cmd_path.as_str() { // TODO handle error
-            "exit" => exit_shell(0),
-            // For now, cd takes no more arguments than the path
-            "cd" => change_directory(&cmd_args[0])?,// TODO handle error index 
-            "pwd" => {
-                let working_dir = get_working_directory()?;
-                println!("{working_dir}");
-            },
-            _ => self.execute_simple()?,
-        }
+        match self {
+            Command::SimpleCommand{path: cmd_path, args: cmd_args} => {
 
+                match cmd_path.as_str() {
+                    "exit" => exit_shell(0),
+                    // For now, cd takes no more arguments than the path
+                    "cd" => change_directory(&cmd_args.get(0).ok_or("cd: missing arg")?)?,
+                    "pwd" => {
+                        let working_dir = get_working_directory()?;
+                        println!("{working_dir}");
+                    },
+                    _ => execute_simple_command(cmd_path, cmd_args)?,
+                }
+            },
+            
+        }
         Ok(())
     }
 
-    /// Executes the command by creating a child process
-    fn execute_simple(&self) -> Result<(), Box<dyn std::error::Error>> {  // TODO handle error
 
-        let Command::SimpleCommand{path: cmd_path, args: cmd_args} = self;
+}
 
-        // Converts cmd and args into the nix lib format
-        let cmd = CString::new(cmd_path.as_str())?;
+/// Executes a *simple command* by creating a child process
+fn execute_simple_command(cmd_path: &str, cmd_args: &[String]) -> Result<(), Box<dyn std::error::Error>> {  // TODO custom errors types
 
-        let mut argv: Vec<CString> = Vec::new();
-        argv.push(cmd.clone()); // argv[0] = command path
+    // Converts cmd and args into the nix lib format
+    let cmd = CString::new(cmd_path)?;
 
-        for arg in cmd_args {
-            argv.push(CString::new(arg.as_str())?);
-        }
+    let mut argv: Vec<CString> = Vec::new();
+    argv.push(cmd.clone()); // argv[0] = command path
 
-        unsafe {
-            match fork()? {
-                ForkResult::Parent { child } => {
-                    waitpid(child, None)?;
-                }
-                ForkResult::Child => {
-                    execvp(&cmd, &argv)?;
-                }
+    for arg in cmd_args {
+        argv.push(CString::new(arg.as_str())?);
+    }
+
+    unsafe {
+        match fork()? {
+            ForkResult::Parent { child } => {
+                waitpid(child, None)?;
+            }
+            ForkResult::Child => {
+                execvp(&cmd, &argv)?;
             }
         }
-
-        Ok(())
-
     }
+
+    Ok(())
 
 }
