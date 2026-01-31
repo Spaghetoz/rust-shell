@@ -1,8 +1,10 @@
 
 //! Module related with commands execution, treatment etc
 //! 
+//! 
+use std::ffi::CString;
 
-use std::process::{Stdio};
+use nix::{sys::wait::waitpid, unistd::{ForkResult, fork, execvp}};
 
 use crate::command::builtin::{change_directory, exit_shell, get_working_directory};
 
@@ -48,26 +50,38 @@ impl Command {
                 let working_dir = get_working_directory()?;
                 println!("{working_dir}");
             },
-            _ => self.execute(),
+            _ => self.execute()?,
         }
 
         Ok(())
     }
 
     /// Executes the command by creating a child process
-    pub fn execute(&self) {  // TODO handle error
+    fn execute(&self) -> Result<(), Box<dyn std::error::Error>> {  // TODO handle error
 
         // TODO handle other commands types
         let Command::SimpleCommand{path: cmd_path, args: cmd_args} = self;
 
-        // Child process executing the command
-        let mut child = std::process::Command::new(&cmd_path) // TODO handle error
-                .args(cmd_args)
-                .stdin(Stdio::inherit())
-                .spawn()
-                .expect("command failed"); // TODO handle error
+        // Converts cmd and args into the nix lib format
+        let cmd = CString::new(cmd_path.clone())?; // TODO find solution without cloning?
+        let args: Vec<CString> = cmd_args
+            .iter()
+            .map(|s| CString::new(s.as_str()).unwrap()) // TODO fix unwrap
+            .collect();
 
-        child.wait().expect("wait error"); // TODO handle error
+        unsafe {
+            match fork()?  {
+                ForkResult::Parent { child } => {
+                    // Prevent zombie processes
+                    waitpid(child, None)?;
+                }
+                ForkResult::Child => {
+                    execvp(&cmd, &args)?;
+                }
+            }
+        }
+
+        Ok(())
 
     }
 
