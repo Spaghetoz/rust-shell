@@ -1,6 +1,7 @@
 
 mod cli;
 mod parsing;
+mod command;
 
 fn main() {
 
