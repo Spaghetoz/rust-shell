@@ -1,7 +1,6 @@
 use std::io::{self, Write};
 
-use crate::parsing::tokenize_input;
-use crate::command::process_command;
+use crate::parsing::{convert_to_command};
 use crate::command::builtin::get_working_directory;
 
 pub fn run_cli() {
@@ -21,10 +20,9 @@ pub fn run_cli() {
         io::stdout().flush().expect("stdout flush failed");  // TODO handle error
 
         let user_input = receive_stdin_input();
-        // Turns the input in a vec of Strings 
-        let input_tokens = tokenize_input(&user_input);
+        let input_command = convert_to_command(&user_input); 
 
-        if let Err(err) = process_command(&input_tokens) {
+        if let Err(err) = input_command.process_command() {
             println!("command error {err}");
         }
     
