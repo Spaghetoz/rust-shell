@@ -22,8 +22,8 @@ pub fn run_cli() {
         let user_input = receive_stdin_input();
         let input_command = convert_to_command(&user_input); 
 
-        if let Err(err) = input_command.process_command() {
-            println!("command error {err}");
+        if let Err(err) = input_command.execute() {
+            println!("{err}");
         }
     
     }
