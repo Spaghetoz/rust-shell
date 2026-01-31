@@ -33,24 +33,25 @@ impl Command {
     /// Executes the command by creating a child process
     fn execute_simple(&self) -> Result<(), Box<dyn std::error::Error>> {  // TODO handle error
 
-        // TODO handle other commands types
         let Command::SimpleCommand{path: cmd_path, args: cmd_args} = self;
 
         // Converts cmd and args into the nix lib format
-        let cmd = CString::new(cmd_path.clone())?; // TODO find solution without cloning?
-        let args: Vec<CString> = cmd_args
-            .iter()
-            .map(|s| CString::new(s.as_str()).unwrap()) // TODO fix unwrap
-            .collect();
+        let cmd = CString::new(cmd_path.as_str())?;
+
+        let mut argv: Vec<CString> = Vec::new();
+        argv.push(cmd.clone()); // argv[0] = command path
+
+        for arg in cmd_args {
+            argv.push(CString::new(arg.as_str())?);
+        }
 
         unsafe {
-            match fork()?  {
+            match fork()? {
                 ForkResult::Parent { child } => {
-                    // Prevent zombie processes
                     waitpid(child, None)?;
                 }
                 ForkResult::Child => {
-                    execvp(&cmd, &args)?;
+                    execvp(&cmd, &argv)?;
                 }
             }
         }
