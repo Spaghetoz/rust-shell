@@ -14,3 +14,9 @@ pub fn change_directory(to: &str) -> Result<(), Box<dyn std::error::Error>> {
 
     Ok(())
 }
+
+pub fn get_working_directory() -> Result<String, Box<dyn std::error::Error>> {
+    
+    let path = std::env::current_dir()?;
+    Ok(path.to_string_lossy().into_owned())
+}
