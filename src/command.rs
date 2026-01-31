@@ -2,7 +2,7 @@
 //! Module related with commands execution, treatment etc
 //! 
 
-use std::process::Command;
+use std::process::{Command, Stdio};
 
 use crate::command::builtin::{change_directory, exit_shell, get_working_directory};
 
@@ -22,24 +22,23 @@ pub fn process_command(command: &[&str]) -> Result<(), Box<dyn std::error::Error
             let working_dir = get_working_directory()?;
             println!("{working_dir}");
         },
-        _ => {
-            let command_stdout = execute_command(command); 
-            println!("{}", command_stdout); // TODO move print elsewhere
-        }
+        _ => execute_command(command),
     }
 
     Ok(())
 }
 
 /// Takes a String slice as the command args where command[0] 
-/// is the command name and command[1..] its arguments and returns the output on stdout
-pub fn execute_command(command: &[&str]) -> String {  // TODO handle error and return a custom stdout/stderr output
-    let command_output = Command::new(&command[0]) // TODO handle error
+/// is the command name and command[1..] its arguments
+pub fn execute_command(command: &[&str]) {  // TODO handle error
+
+    // Child process executing the command
+    let mut child = Command::new(&command[0]) // TODO handle error
             .args(&command[1..])
-            .output()
+            .stdin(Stdio::inherit())
+            .spawn()
             .expect("command failed"); // TODO handle error
 
-    let command_stdout = String::from_utf8_lossy(&command_output.stdout);
-    
-    command_stdout.to_string()
+    child.wait().expect("wait error"); // TODO handle error
+
 }
