@@ -2,10 +2,11 @@
 //! 
 //! 
 
-use std::{ffi::CString, fs::{OpenOptions, Permissions}, os::{fd::AsFd, unix::fs::PermissionsExt}, sync::Arc};
-use nix::{sys::wait::waitpid, unistd::{ForkResult, dup2_stderr, dup2_stdin, dup2_stdout, execvp, fork, write}};
+use std::{ffi::CString, ptr};
 
-use crate::command::{IoContext, RedirectionType, builtin::{change_directory, exit_shell, get_working_directory}};
+use libc::{WEXITSTATUS, WIFEXITED, dup2, execvp, fork, pid_t, waitpid, write};
+
+use crate::command::{IoFds, RedirectionType, builtin::{change_directory, exit_shell, get_working_directory}};
 use crate::command::Command;
 
 impl Command {
@@ -14,11 +15,7 @@ impl Command {
     /// like if it's a simple command, special command (exit, cd...), a pipe, etc...
     /// This function may recursively call the sub commands of &self by passing a transformed iocontext
     /// 
-    /// * `cmd_io_context` - Where the executed command output should go, 
-    ///                      for instance if we the command represents  ls -l | cat , 
-    ///                      standard output destination would likely be stdout,
-    ///                      and for a 2> redirection stderr would be a file 
-    pub fn execute(&self, cmd_io_context: &IoContext) -> Result<(), Box<dyn std::error::Error>>{
+    pub fn execute(&self, io_fds: &IoFds) -> Result<(), Box<dyn std::error::Error>>{
         
         match self {
             Command::SimpleCommand{path: cmd_path, args: cmd_args} => {
@@ -29,14 +26,18 @@ impl Command {
                     "cd" => change_directory(&cmd_args.get(0).ok_or("cd: missing arg")?)?,
                     "pwd" => {
                         let working_dir = get_working_directory()?;
-                        let output = format!("{}\n", working_dir);
-                        write(cmd_io_context.stdout.as_fd(), output.as_bytes())?;
+
+                        unsafe {
+                            if write(io_fds.stdout, working_dir.as_ptr() as *const _, working_dir.len()) < 0 {
+                                return Err("Write failed".into());
+                            }
+                        }
                     },
-                    _ => execute_simple_command(cmd_path, cmd_args, cmd_io_context)?,
+                    _ => execute_simple_command(cmd_path, cmd_args, io_fds)?,
                 }
             },
             Command::Redirection { kind, command, file } => {
-                execute_redirection_command(kind, command, file, cmd_io_context)?;
+                execute_redirection_command(kind, command, file, io_fds)?;
             }
             
         }
@@ -47,43 +48,55 @@ impl Command {
 }
 
 /// Executes a *simple command* by creating a child process
-fn execute_simple_command(cmd_path: &str, cmd_args: &[String], cmd_io_context: &IoContext) -> Result<(), Box<dyn std::error::Error>> {  // TODO custom errors types
-
-    // Converts cmd and args into the nix lib format
+fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_fds: &IoFds) -> Result<(), Box<dyn std::error::Error>> {  // TODO custom errors types
+    
+    // Converts cmd and args into the libc format
     let cmd = CString::new(cmd_path)?;
-
-    let mut argv: Vec<CString> = Vec::new();
-    argv.push(cmd.clone()); // argv[0] = command path
+    let mut cstrings: Vec<CString> = vec![cmd.clone()];  // argv[0] = command path
 
     for arg in cmd_args {
-        argv.push(CString::new(arg.as_str())?);
+        cstrings.push(CString::new(arg.as_str())?);
     }
 
-    unsafe {
-        match fork()? {
-            ForkResult::Parent { child } => {
-                // Prevent zombies child processes by waiting them
-                waitpid(child, None)?;
-            }
-            ForkResult::Child => {
-                // Redirects the executed command stdout/stdin/stdout into the context ones
-                dup2_stdin(cmd_io_context.stdin.as_fd())?;
-                dup2_stdout(cmd_io_context.stdout.as_fd())?;
-                dup2_stderr(cmd_io_context.stderr.as_fd())?;
+    let mut argv: Vec<*const libc::c_char> = cstrings.iter().map(|c| c.as_ptr()).collect();
+    argv.push(ptr::null());
 
-                execvp(&cmd, &argv)?;
+    unsafe {
+
+        let pid : pid_t = fork();
+        if pid < 0 {
+            return Err("fork error".into());
+        } 
+        else if pid == 0 {
+
+            if dup2(io_fds.stdin, 0) < 0 || dup2(io_fds.stdout, 1) < 0 || dup2(io_fds.stderr, 2) < 0 {
+                eprintln!("dup2 failed");
+                std::process::exit(1);
+            }
+
+            execvp(cmd.as_ptr(), argv.as_ptr());
+            std::process::exit(1);
+            
+        } else {
+
+            let mut status: i32 = 0;
+            waitpid(pid, &mut status,0);
+                        
+            if !WIFEXITED(status) || WEXITSTATUS(status) != 0 {
+                return Err(format!("child process exited with status {}", libc::WEXITSTATUS(status)).into());
             }
         }
+
     }
 
     Ok(())
 
 }
 
-fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_path: &str, cmd_io_context: &IoContext) -> Result<(), Box<dyn std::error::Error>>  {
+fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_path: &str, io_fds: &IoFds) -> Result<(), Box<dyn std::error::Error>>  {
     
     // Select the options creation/read depending on the kind 
-    let mut options = OpenOptions::new();
+    /*let mut options = OpenOptions::new();
     match kind {
         RedirectionType::In => { options.read(true); },
         RedirectionType::Out | RedirectionType::Err =>  { options.write(true).create(true).truncate(true); },
@@ -107,7 +120,8 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
     }
 
     // Recursive call on the command
-    command.execute(&new_context)?;
+    command.execute(&new_context)?;*/
 
     Ok(())
 }
+

@@ -6,9 +6,6 @@
 pub mod execution;
 pub mod builtin;
 
-use std::sync::Arc;
-use std::fs::File;
-
 pub enum Command {
     SimpleCommand {
         path: String,
@@ -32,13 +29,12 @@ pub enum RedirectionType {
     Err,      // 2>
 }
 
+// TODO update comments
 /// Struct containing what stdin should be and where stdout and stderr should go.
 /// It may be used to specify redirections and pipe destinations, and be used for testing
 #[derive(Clone)]
-pub struct IoContext {
-    // Use of Arc to make File cloneable
-    pub stdin: Arc<File>, 
-    pub stdout: Arc<File>,
-    pub stderr: Arc<File>,
+pub struct IoFds {
+    pub stdin: i32, 
+    pub stdout: i32,
+    pub stderr: i32,
 }
-// TODO iocontext builder / cloner
