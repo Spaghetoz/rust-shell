@@ -1,0 +1,11 @@
+.
+..
+.git
+.gitignore
+Cargo.lock
+Cargo.toml
+README.md
+src
+target
+test.txt
+tests
