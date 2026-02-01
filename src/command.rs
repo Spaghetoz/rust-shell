@@ -32,7 +32,7 @@ pub enum RedirectionType {
     Err,      // 2>
 }
 
-/// Struct containing what stdin should be and where stdout and stderr should go
+/// Struct containing what stdin should be and where stdout and stderr should go.
 /// It may be used to specify redirections and pipe destinations, and be used for testing
 #[derive(Clone)]
 pub struct IoContext {
