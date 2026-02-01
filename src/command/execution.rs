@@ -4,7 +4,7 @@
 
 use std::{ffi::CString, ptr};
 
-use libc::{WEXITSTATUS, WIFEXITED, dup2, execvp, fork, pid_t, waitpid, write};
+use libc::{O_APPEND, O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, S_IRGRP, S_IROTH, S_IRUSR, S_IWUSR, WEXITSTATUS, WIFEXITED, dup2, execvp, fork, open, pid_t, waitpid, write};
 
 use crate::command::{IoFds, RedirectionType, builtin::{change_directory, exit_shell, get_working_directory}};
 use crate::command::Command;
@@ -94,33 +94,33 @@ fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_fds: &IoFds) -
 }
 
 fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_path: &str, io_fds: &IoFds) -> Result<(), Box<dyn std::error::Error>>  {
-    
+
     // Select the options creation/read depending on the kind 
-    /*let mut options = OpenOptions::new();
-    match kind {
-        RedirectionType::In => { options.read(true); },
-        RedirectionType::Out | RedirectionType::Err =>  { options.write(true).create(true).truncate(true); },
-        RedirectionType::Append => { options.write(true).create(true).append(true); },
-    }       
+    let oflag = match kind {
+        RedirectionType::In => O_RDONLY,
+        RedirectionType::Out | RedirectionType::Err => O_TRUNC | O_CREAT | O_WRONLY,
+        RedirectionType::Append => O_WRONLY | O_CREAT | O_APPEND,
+    };
 
-    let file = options.open(file_path)?;
+    let file_path_cstr = CString::new(file_path)?;
+    let file_fd = unsafe { open(file_path_cstr.as_ptr(), oflag, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH) };
+
+    if file_fd < 0 {
+        return Err(format!("Failed to open file {}", file_path).into());
+    }
+ 
+    // Creates a new io fds based on the old, but with standards in/out redirected
+    let mut new_io_fds = io_fds.clone();
+    match kind {
+        RedirectionType::In => new_io_fds.stdin = file_fd,
+        RedirectionType::Out | RedirectionType::Append => new_io_fds.stdout = file_fd,
+        RedirectionType::Err => new_io_fds.stderr = file_fd,
+    }
     
-    if !matches!(kind, RedirectionType::In) {
-        let perms = Permissions::from_mode(0o644);
-        file.set_permissions(perms)?;
-    }
-
-
-    // Creates a new context based on the old, but with standards in/out redirected
-    let mut new_context = cmd_io_context.clone();
-    match kind {
-        RedirectionType::In => new_context.stdin = Arc::new(file),
-        RedirectionType::Out | RedirectionType::Append => new_context.stdout = Arc::new(file),
-        RedirectionType::Err => new_context.stderr = Arc::new(file),
-    }
+    unsafe { libc::close(file_fd); }
 
     // Recursive call on the command
-    command.execute(&new_context)?;*/
+    command.execute(&new_io_fds)?;
 
     Ok(())
 }
