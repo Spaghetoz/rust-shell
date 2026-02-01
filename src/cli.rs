@@ -1,9 +1,18 @@
-use std::io::{self, Write};
+use std::io::{self, Write, stderr, stdin, stdout};
 
+use crate::command::IoContext;
 use crate::parsing::{convert_to_command};
 use crate::command::builtin::get_working_directory;
 
 pub fn run_cli() {
+
+    // Variable containing what stdin, stdout and stderr should be
+    // for the terminal, it's simply stdin(), stdout() and stderr()
+    let mut terminal_io_context = IoContext {
+        stdin: Box::from(stdin()),
+        stdout: Box::from(stdout()),
+        stderr: Box::from(stderr()),
+    };
 
     println!(" ____            _     ____  _          _ _ ");
     println!("|  _ \\ _   _ ___| |_  / ___|| |__   ___| | |");
@@ -22,7 +31,7 @@ pub fn run_cli() {
         let user_input = receive_stdin_input();
         let input_command = convert_to_command(&user_input); 
 
-        if let Err(err) = input_command.execute() {
+        if let Err(err) = input_command.execute(&mut terminal_io_context) {
             println!("{err}");
         }
     
