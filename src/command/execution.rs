@@ -2,8 +2,8 @@
 //! 
 //! 
 
-use std::{ffi::CString};
-use nix::{sys::wait::waitpid, unistd::{ForkResult, fork, execvp}};
+use std::{ffi::CString, os::fd::AsFd};
+use nix::{sys::wait::waitpid, unistd::{ForkResult, dup2_stdout, execvp, fork, write}};
 
 use crate::command::{IoContext, builtin::{change_directory, exit_shell, get_working_directory}};
 use crate::command::Command;
@@ -15,7 +15,7 @@ impl Command {
     /// 
     /// * `cmd_io_context` - Where the executed command output should go, 
     ///                      for instance if we the command represents  ls -l | cat , 
-    ///                      standard output destination would likely be stdout(),
+    ///                      standard output destination would likely be stdout,
     ///                      and for a 2> redirection stderr would be a file 
     pub fn execute(&self, cmd_io_context: &mut IoContext) -> Result<(), Box<dyn std::error::Error>>{
         
@@ -28,9 +28,10 @@ impl Command {
                     "cd" => change_directory(&cmd_args.get(0).ok_or("cd: missing arg")?)?,
                     "pwd" => {
                         let working_dir = get_working_directory()?;
-                        writeln!(cmd_io_context.stdout, "{working_dir}")?;
+                        let output = format!("{}\n", working_dir);
+                        write(cmd_io_context.stdout.as_fd(), output.as_bytes())?;
                     },
-                    _ => execute_simple_command(cmd_path, cmd_args)?,
+                    _ => execute_simple_command(cmd_path, cmd_args, cmd_io_context)?,
                 }
             },
             
@@ -42,7 +43,7 @@ impl Command {
 }
 
 /// Executes a *simple command* by creating a child process
-fn execute_simple_command(cmd_path: &str, cmd_args: &[String]) -> Result<(), Box<dyn std::error::Error>> {  // TODO custom errors types
+fn execute_simple_command(cmd_path: &str, cmd_args: &[String], cmd_io_context: &mut IoContext) -> Result<(), Box<dyn std::error::Error>> {  // TODO custom errors types
 
     // Converts cmd and args into the nix lib format
     let cmd = CString::new(cmd_path)?;
@@ -54,14 +55,15 @@ fn execute_simple_command(cmd_path: &str, cmd_args: &[String]) -> Result<(), Box
         argv.push(CString::new(arg.as_str())?);
     }
 
-    //TODO dup2 to cmd_context
-
     unsafe {
         match fork()? {
             ForkResult::Parent { child } => {
                 waitpid(child, None)?;
             }
             ForkResult::Child => {
+                // Redirects the executed command stdout into the context stdout
+                dup2_stdout(cmd_io_context.stdout.as_fd())?;
+
                 execvp(&cmd, &argv)?;
             }
         }

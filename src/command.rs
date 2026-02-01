@@ -30,10 +30,9 @@ pub enum Command {
 }*/
 
 /// Struct containing what stdin should be and where stdout and stderr should go
-/// It may be used to specify redirections and pipe destinations, and be used for testing by
-/// putting the stdout in a String buffer for instance 
+/// It may be used to specify redirections and pipe destinations, and be used for testing
 pub struct IoContext {
-    pub stdin: Box<dyn std::io::Read>,  // TODO use lifetimes
-    pub stdout: Box<dyn std::io::Write>,
-    pub stderr: Box<dyn std::io::Write>,
+    pub stdin: std::fs::File, 
+    pub stdout: std::fs::File,
+    pub stderr: std::fs::File,
 }

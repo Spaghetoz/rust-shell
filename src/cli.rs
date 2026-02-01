@@ -1,4 +1,7 @@
-use std::io::{self, Write, stderr, stdin, stdout};
+use std::io::{self, Write};
+
+use std::fs::File;
+use std::os::unix::io::FromRawFd;
 
 use crate::command::IoContext;
 use crate::parsing::{convert_to_command};
@@ -6,12 +9,11 @@ use crate::command::builtin::get_working_directory;
 
 pub fn run_cli() {
 
-    // Variable containing what stdin, stdout and stderr should be
-    // for the terminal, it's simply stdin(), stdout() and stderr()
-    let mut terminal_io_context = IoContext {
-        stdin: Box::from(stdin()),
-        stdout: Box::from(stdout()),
-        stderr: Box::from(stderr()),
+    // Variable containing what stdin, stdout and stderr should be for the terminal
+    let mut terminal_io_context = IoContext {    
+        stdin: unsafe { File::from_raw_fd(0) },   
+        stdout: unsafe { File::from_raw_fd(1) },  
+        stderr: unsafe { File::from_raw_fd(2) },
     };
 
     println!(" ____            _     ____  _          _ _ ");
