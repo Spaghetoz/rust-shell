@@ -62,6 +62,7 @@ fn execute_simple_command(cmd_path: &str, cmd_args: &[String], cmd_io_context: &
     unsafe {
         match fork()? {
             ForkResult::Parent { child } => {
+                // Prevent zombies child processes by waiting them
                 waitpid(child, None)?;
             }
             ForkResult::Child => {
@@ -97,7 +98,7 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
     }
 
 
-    // Creates a new context based on the old, but with stdout redirected
+    // Creates a new context based on the old, but with standards in/out redirected
     let mut new_context = cmd_io_context.clone();
     match kind {
         RedirectionType::In => new_context.stdin = Arc::new(file),

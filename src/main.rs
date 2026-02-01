@@ -1,10 +1,7 @@
 
-mod cli;
-mod parsing;
-mod command;
 
 fn main() {
 
-    cli::run_cli();
+    rust_shell::cli::run_cli();
     
 }
