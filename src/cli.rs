@@ -3,14 +3,14 @@ use std::io::{self, Write};
 use std::fs::File;
 use std::os::unix::io::FromRawFd;
 
-use crate::command::{Command, IoContext, RedirectionType};
+use crate::command::{IoContext};
 use crate::parsing::{convert_to_command};
 use crate::command::builtin::get_working_directory;
 
 pub fn run_cli() {
 
     // Variable containing what stdin, stdout and stderr should be for the terminal
-    let mut terminal_io_context = IoContext {    
+    let terminal_io_context = IoContext {    
         stdin: unsafe { File::from_raw_fd(0).into() },   
         stdout: unsafe { File::from_raw_fd(1).into() },  
         stderr: unsafe { File::from_raw_fd(2).into() },

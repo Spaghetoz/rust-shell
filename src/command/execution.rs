@@ -3,7 +3,7 @@
 //! 
 
 use std::{ffi::CString, fs::{OpenOptions, Permissions}, os::{fd::AsFd, unix::fs::PermissionsExt}, sync::Arc};
-use nix::{sys::{wait::waitpid}, unistd::{ForkResult, dup2_stdout, execvp, fork, write}};
+use nix::{sys::wait::waitpid, unistd::{ForkResult, dup2_stderr, dup2_stdin, dup2_stdout, execvp, fork, write}};
 
 use crate::command::{IoContext, RedirectionType, builtin::{change_directory, exit_shell, get_working_directory}};
 use crate::command::Command;
@@ -65,8 +65,10 @@ fn execute_simple_command(cmd_path: &str, cmd_args: &[String], cmd_io_context: &
                 waitpid(child, None)?;
             }
             ForkResult::Child => {
-                // Redirects the executed command stdout into the context stdout
+                // Redirects the executed command stdout/stdin/stdout into the context ones
+                dup2_stdin(cmd_io_context.stdin.as_fd())?;
                 dup2_stdout(cmd_io_context.stdout.as_fd())?;
+                dup2_stderr(cmd_io_context.stderr.as_fd())?;
 
                 execvp(&cmd, &argv)?;
             }
@@ -82,19 +84,25 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
     // Select the options creation/read depending on the kind 
     let mut options = OpenOptions::new();
     match kind {
-        RedirectionType::Out => {
-            options.write(true).create(true).truncate(true);
-        },
-    }
+        RedirectionType::In => { options.read(true); },
+        RedirectionType::Out | RedirectionType::Err =>  { options.write(true).create(true).truncate(true); },
+        RedirectionType::Append => { options.write(true).create(true).append(true); },
+    }       
 
     let file = options.open(file_path)?;
-    let perms = Permissions::from_mode(0o644);
-    file.set_permissions(perms)?;
+    
+    if !matches!(kind, RedirectionType::In) {
+        let perms = Permissions::from_mode(0o644);
+        file.set_permissions(perms)?;
+    }
+
 
     // Creates a new context based on the old, but with stdout redirected
     let mut new_context = cmd_io_context.clone();
     match kind {
-        RedirectionType::Out => new_context.stdout = Arc::new(file)
+        RedirectionType::In => new_context.stdin = Arc::new(file),
+        RedirectionType::Out | RedirectionType::Append => new_context.stdout = Arc::new(file),
+        RedirectionType::Err => new_context.stderr = Arc::new(file),
     }
 
     // Recursive call on the command

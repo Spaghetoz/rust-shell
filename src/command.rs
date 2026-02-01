@@ -26,10 +26,10 @@ pub enum Command {
 }
 
 pub enum RedirectionType {
-    //In,       // <
+    In,       // <
     Out,      // >
-    //Append,   // >>
-    //Err,      // 2>
+    Append,   // >>
+    Err,      // 2>
 }
 
 /// Struct containing what stdin should be and where stdout and stderr should go
@@ -41,3 +41,4 @@ pub struct IoContext {
     pub stdout: Arc<File>,
     pub stderr: Arc<File>,
 }
+// TODO iocontext builder / cloner
