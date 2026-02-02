@@ -1,4 +1,6 @@
 # Rust (mini)-shell
+![rust](https://img.shields.io/badge/Rust-444444?logo=rust&logoColor=red)
+![Last Commit](https://img.shields.io/github/last-commit/spaghetoz/rust-shell)
 
 ### A basic unix shell made with Rust
 
