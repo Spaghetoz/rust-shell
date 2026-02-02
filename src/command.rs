@@ -7,13 +7,10 @@ pub mod execution;
 pub mod builtin;
 
 pub enum Command {
-    SimpleCommand {
-        path: String,
-        args: Vec<String>,
-    },
+    Simple(SimpleCommand),
     /*Pipe {
         left: Box<Command>,
-        right: Box<Command>,
+        right: Box<SimpleCommand>,
     },*/
     Redirection {
         kind: RedirectionType,
@@ -21,6 +18,12 @@ pub enum Command {
         file: String,
     },
 }
+
+pub struct SimpleCommand {
+    pub path: String,
+    pub args: Vec<String>,
+}
+
 
 pub enum RedirectionType {
     In,       // <

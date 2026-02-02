@@ -6,7 +6,7 @@ use std::{ffi::CString, ptr};
 
 use libc::{O_APPEND, O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, S_IRGRP, S_IROTH, S_IRUSR, S_IWUSR, WEXITSTATUS, WIFEXITED, dup2, execvp, fork, open, pid_t, waitpid, write};
 
-use crate::command::{IoFds, RedirectionType, builtin::{change_directory, exit_shell, get_working_directory}};
+use crate::command::{IoFds, RedirectionType, SimpleCommand, builtin::{change_directory, exit_shell, get_working_directory}};
 use crate::command::Command;
 
 impl Command {
@@ -18,7 +18,7 @@ impl Command {
     pub fn execute(&self, io_fds: &IoFds) -> Result<(), Box<dyn std::error::Error>>{
         
         match self {
-            Command::SimpleCommand{path: cmd_path, args: cmd_args} => {
+            Command::Simple( SimpleCommand{path: cmd_path, args: cmd_args} ) => {
 
                 match cmd_path.as_str() {
                     "exit" => exit_shell(0),
@@ -38,7 +38,10 @@ impl Command {
             },
             Command::Redirection { kind, command, file } => {
                 execute_redirection_command(kind, command, file, io_fds)?;
-            }
+            },
+            /*Command::Pipe { left, right } => {
+                execute_pipe_command(left, right);
+            }*/
             
         }
         Ok(())
@@ -125,3 +128,9 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
     Ok(())
 }
 
+/*fn execute_pipe_command(left_cmd: &Command, right_cmd: &SimpleCommand) -> Result<(), Box<dyn std::error::Error>> {
+
+    
+
+    Ok(())
+}*/
