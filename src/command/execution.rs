@@ -26,11 +26,9 @@ impl Command {
                     "cd" => change_directory(&cmd_args.get(0).ok_or("cd: missing arg")?)?,
                     "pwd" => {
                         let working_dir = get_working_directory()?;
-
+                        let output = format!("{}\n", working_dir);
                         unsafe {
-                            if write(io_fds.stdout, working_dir.as_ptr() as *const _, working_dir.len()) < 0 {
-                                return Err("Write failed".into());
-                            }
+                            write(io_fds.stdout, output.as_ptr() as *const libc::c_void, output.len());
                         }
                     },
                     _ => execute_simple_command(cmd_path, cmd_args, io_fds)?,
@@ -120,46 +118,71 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
         RedirectionType::Err => new_io_fds.stderr = file_fd,
     }
     
-    unsafe { close(file_fd); }
+    // Recursive call on the command with error checking
+    if let Err(err) = command.execute(&new_io_fds) {
 
-    // Recursive call on the command
-    command.execute(&new_io_fds)?;
+        unsafe {close(file_fd); }
+        return Err(err);
+    }
+
+    unsafe {close(file_fd); }
 
     Ok(())
 }
 
-fn execute_pipe_command(left_cmd: &Command, right_cmd: &SimpleCommand, io_fds: &IoFds) -> Result<(), Box<dyn std::error::Error>> {
+fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, io_fds: &IoFds) -> Result<(), Box<dyn std::error::Error>> {
 
     let mut pipe_fds: [libc::c_int; 2] = [0; 2];
     if unsafe { pipe(pipe_fds.as_mut_ptr())} < 0 {
         return Err("Pipe failed".into());
     }
 
+    // Fork left
+    let pid_left = unsafe { fork() };
+    if pid_left < 0 {
+        return Err("fork error".into());
+    } else if pid_left == 0 {
+        // child left
+        unsafe {
+            close(pipe_fds[0]);
+            dup2(pipe_fds[1], 1); 
+            close(pipe_fds[1]);
+        }
+        left_cmd.execute(io_fds)?;
+        std::process::exit(0);
+    }
+
+    // Fork right
+    let pid_right = unsafe { fork() };
+    if pid_right < 0 {
+        return Err("fork error".into());
+    } else if pid_right == 0 {
+        // child right
+        unsafe {
+            close(pipe_fds[1]); // close write side on the pipe
+            dup2(pipe_fds[0], 0); // redirection stdin -> read side
+            close(pipe_fds[0]);
+        }
+        right_cmd.execute(io_fds)?;
+        std::process::exit(0);
+    }
+
+    // Parent
     unsafe {
-        let pid : pid_t = fork();
-        if pid < 0 {
-            return Err("pipe fork error".into());
-        } 
-        // In child process
-        else if pid == 0 {
-            close(pipe_fds[0]);
-            dup2(pipe_fds[1],1); // Redirect stdout to pipe write
-            close(pipe_fds[1]);
+        close(pipe_fds[0]);
+        close(pipe_fds[1]);
 
-            left_cmd.execute(io_fds)?;
-            std::process::exit(0);
-        } 
-        // In parent process
-        else {
-            close(pipe_fds[1]);
-            dup2(pipe_fds[0], 0); // Redirect stdin to pipe read
-            close(pipe_fds[0]);
+        // Wait both children to prevent them to being zombies
+        let mut status_left = 0;
+        let mut status_right = 0;
+        waitpid(pid_left, &mut status_left, 0);
+        waitpid(pid_right, &mut status_right, 0);
 
-            let SimpleCommand{path, args} = right_cmd;
-            execute_simple_command(path, args, io_fds)?;
-            
-            let mut status: i32 = 0;
-            waitpid(pid, &mut status, 0);
+        if !WIFEXITED(status_left) || WEXITSTATUS(status_left) != 0 {
+            return Err("Left command failed".into());
+        }
+        if !WIFEXITED(status_right) || WEXITSTATUS(status_right) != 0 {
+            return Err("Right command failed".into());
         }
     }
 

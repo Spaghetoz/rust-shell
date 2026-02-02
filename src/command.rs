@@ -10,7 +10,7 @@ pub enum Command {
     Simple(SimpleCommand),
     Pipe {
         left: Box<Command>,
-        right: Box<SimpleCommand>,
+        right: Box<Command>,
     },
     Redirection {
         kind: RedirectionType,
