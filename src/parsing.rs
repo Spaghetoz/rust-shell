@@ -1,6 +1,7 @@
 
 use crate::command::{Command};
 
+#[derive(Clone)]
 pub enum Token {
     Word(String),
     RedirectOp(String),
@@ -26,7 +27,7 @@ fn tokenize_input(input: &str) -> Vec<Token> {
 
     for word in input.split_whitespace() {
         tokens.push(match word {   
-            "<" | ">" | ">>" | "2>" => Token::RedirectOp(word.to_string()),
+            "<" | ">" | ">>" | "2>" => Token::RedirectOp(word.to_string()), // TODO token type for each variant instead of putting string in RedirectOp
             "|" => Token::Pipe,
             _ => Token::Word(word.to_string())
         }); 
@@ -37,18 +38,34 @@ fn tokenize_input(input: &str) -> Vec<Token> {
 
 fn parse(tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
 
-    // TODO handle other commands types than simple commands
-    let Token::Word(command_path) = tokens.get(0).ok_or("please enter a valid first keyword")? else {
-        panic!("unsupported token"); 
-    };
+    let mut tokens_group: Vec<Token> = Vec::new();
 
-    let mut args : Vec<String> = Vec::new();
-    for token in &tokens[1..] {
+    for token in tokens.iter() {
+
         match token {
-            Token::Word(arg) => args.push(arg.clone()),
-            _ => panic!("unsupported yet"),
-        }
+            // If no special operator, simply put the word in the tokens group, and treat them later
+            Token::Word(_) => tokens_group.push(token.clone()), // TODO avoid clone
+            Token::RedirectOp(_) => todo!(),
+            Token::Pipe => todo!(),
+        }   
     }
 
-    Ok(Command::Simple { cmd_path: command_path.clone(), cmd_args: args})
+    Ok(create_simple_command(&tokens_group)?)
+}
+
+// Creates (if the tokens are well formed) a simple command
+fn create_simple_command(tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
+
+    let Token::Word(cmd_path) = tokens.get(0).ok_or("missing first token")? else {
+        return Err("expected a word token".into());
+    };
+
+    let cmd_args: Vec<String> = tokens[1..].iter().map(|token| 
+        match token {
+            Token::Word(arg) => Ok(arg.clone()), // TODO avoid clone
+            _ => Err("token should be a word"),
+        })
+        .collect::<Result<_, _>>()?;
+
+    Ok(Command::Simple { cmd_path: cmd_path.clone(), cmd_args: cmd_args })
 }
