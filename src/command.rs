@@ -8,10 +8,10 @@ pub mod builtin;
 
 pub enum Command {
     Simple(SimpleCommand),
-    /*Pipe {
+    Pipe {
         left: Box<Command>,
         right: Box<SimpleCommand>,
-    },*/
+    },
     Redirection {
         kind: RedirectionType,
         command: Box<Command>,

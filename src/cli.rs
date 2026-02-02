@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crate::command::{Command, IoFds, RedirectionType};
+use crate::command::{Command, IoFds, RedirectionType, SimpleCommand};
 use crate::parsing::{convert_to_command};
 use crate::command::builtin::get_working_directory;
 

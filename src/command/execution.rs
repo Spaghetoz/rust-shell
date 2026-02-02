@@ -4,7 +4,7 @@
 
 use std::{ffi::CString, ptr};
 
-use libc::{O_APPEND, O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, S_IRGRP, S_IROTH, S_IRUSR, S_IWUSR, WEXITSTATUS, WIFEXITED, dup2, execvp, fork, open, pid_t, waitpid, write};
+use libc::{O_APPEND, O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, S_IRGRP, S_IROTH, S_IRUSR, S_IWUSR, WEXITSTATUS, WIFEXITED, close, dup2, execvp, fork, open, pid_t, pipe, waitpid, write};
 
 use crate::command::{IoFds, RedirectionType, SimpleCommand, builtin::{change_directory, exit_shell, get_working_directory}};
 use crate::command::Command;
@@ -39,9 +39,9 @@ impl Command {
             Command::Redirection { kind, command, file } => {
                 execute_redirection_command(kind, command, file, io_fds)?;
             },
-            /*Command::Pipe { left, right } => {
-                execute_pipe_command(left, right);
-            }*/
+            Command::Pipe { left, right } => {
+                execute_pipe_command(left, right, io_fds)?;
+            }
             
         }
         Ok(())
@@ -120,7 +120,7 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
         RedirectionType::Err => new_io_fds.stderr = file_fd,
     }
     
-    unsafe { libc::close(file_fd); }
+    unsafe { close(file_fd); }
 
     // Recursive call on the command
     command.execute(&new_io_fds)?;
@@ -128,9 +128,40 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
     Ok(())
 }
 
-/*fn execute_pipe_command(left_cmd: &Command, right_cmd: &SimpleCommand) -> Result<(), Box<dyn std::error::Error>> {
+fn execute_pipe_command(left_cmd: &Command, right_cmd: &SimpleCommand, io_fds: &IoFds) -> Result<(), Box<dyn std::error::Error>> {
 
-    
+    let mut pipe_fds: [libc::c_int; 2] = [0; 2];
+    if unsafe { pipe(pipe_fds.as_mut_ptr())} < 0 {
+        return Err("Pipe failed".into());
+    }
+
+    unsafe {
+        let pid : pid_t = fork();
+        if pid < 0 {
+            return Err("pipe fork error".into());
+        } 
+        // In child process
+        else if pid == 0 {
+            close(pipe_fds[0]);
+            dup2(pipe_fds[1],1); // Redirect stdout to pipe write
+            close(pipe_fds[1]);
+
+            left_cmd.execute(io_fds)?;
+            std::process::exit(0);
+        } 
+        // In parent process
+        else {
+            close(pipe_fds[1]);
+            dup2(pipe_fds[0], 0); // Redirect stdin to pipe read
+            close(pipe_fds[0]);
+
+            let SimpleCommand{path, args} = right_cmd;
+            execute_simple_command(path, args, io_fds)?;
+            
+            let mut status: i32 = 0;
+            waitpid(pid, &mut status, 0);
+        }
+    }
 
     Ok(())
-}*/
+}
