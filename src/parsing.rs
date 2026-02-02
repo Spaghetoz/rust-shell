@@ -9,14 +9,14 @@ pub enum Token {
 
 /// Converts a string representing a command into a Command structure
 /// For example "ls /home" gives SimpleCommand("ls", ["/home"])
-pub fn convert_to_command(input: &str) -> Command {
+pub fn convert_to_command(input: &str) -> Result<Command, Box<dyn std::error::Error>>  {
     
     // Turns the input in a vec of Strings 
     let input_tokens = tokenize_input(&input);
     // Turns the tokens into a command structure
-    let command = parse(&input_tokens);
+    let command = parse(&input_tokens)?;
 
-    command
+    Ok(command)
 }
 
 /// Converts an input string into a vec of tokens
@@ -35,10 +35,10 @@ fn tokenize_input(input: &str) -> Vec<Token> {
     tokens
 }
 
-fn parse(tokens: &[Token]) -> Command {
+fn parse(tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
 
     // TODO handle other commands types than simple commands
-    let Token::Word(command_path) = tokens.get(0).expect("arg 0 not found") else {
+    let Token::Word(command_path) = tokens.get(0).ok_or("please enter a valid first keyword")? else {
         panic!("unsupported token"); 
     };
 
@@ -50,5 +50,5 @@ fn parse(tokens: &[Token]) -> Command {
         }
     }
 
-    Command::Simple { cmd_path: command_path.clone(), cmd_args: args}
+    Ok(Command::Simple { cmd_path: command_path.clone(), cmd_args: args})
 }

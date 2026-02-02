@@ -27,7 +27,14 @@ pub fn run_cli() {
         io::stdout().flush().expect("stdout flush failed");  // TODO handle error
 
         let user_input = receive_stdin_input();
-        let input_command = convert_to_command(&user_input); 
+
+        let input_command = match convert_to_command(&user_input) {
+            Ok(command) => command,
+            Err(err) => {
+                println!("Parsing error : {err}");
+                continue;
+            }
+        };
         
         if let Err(err) = input_command.execute(&terminal_fds) {
             println!("{err}");
