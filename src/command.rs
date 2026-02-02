@@ -7,7 +7,10 @@ pub mod execution;
 pub mod builtin;
 
 pub enum Command {
-    Simple(SimpleCommand),
+    Simple {
+        cmd_path: String,
+        cmd_args: Vec<String>,
+    },
     Pipe {
         left: Box<Command>,
         right: Box<Command>,
@@ -17,11 +20,6 @@ pub enum Command {
         command: Box<Command>,
         file: String,
     },
-}
-
-pub struct SimpleCommand {
-    pub path: String,
-    pub args: Vec<String>,
 }
 
 

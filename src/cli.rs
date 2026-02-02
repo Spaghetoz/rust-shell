@@ -1,6 +1,6 @@
 use std::io::{self, Write};
 
-use crate::command::{Command, IoFds, RedirectionType, SimpleCommand};
+use crate::command::{IoFds};
 use crate::parsing::{convert_to_command};
 use crate::command::builtin::get_working_directory;
 
@@ -28,7 +28,7 @@ pub fn run_cli() {
 
         let user_input = receive_stdin_input();
         let input_command = convert_to_command(&user_input); 
-
+        
         if let Err(err) = input_command.execute(&terminal_fds) {
             println!("{err}");
         }

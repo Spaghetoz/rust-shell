@@ -1,5 +1,5 @@
 
-use crate::command::{Command, SimpleCommand};
+use crate::command::{Command};
 
 pub enum Token {
     Word(String),
@@ -50,5 +50,5 @@ fn parse(tokens: &[Token]) -> Command {
         }
     }
 
-    Command::Simple(SimpleCommand { path: command_path.clone(), args})
+    Command::Simple { cmd_path: command_path.clone(), cmd_args: args}
 }

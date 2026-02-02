@@ -6,7 +6,7 @@ use std::{ffi::CString, ptr};
 
 use libc::{O_APPEND, O_CREAT, O_RDONLY, O_TRUNC, O_WRONLY, S_IRGRP, S_IROTH, S_IRUSR, S_IWUSR, WEXITSTATUS, WIFEXITED, close, dup2, execvp, fork, open, pid_t, pipe, waitpid, write};
 
-use crate::command::{IoFds, RedirectionType, SimpleCommand, builtin::{change_directory, exit_shell, get_working_directory}};
+use crate::command::{IoFds, RedirectionType, builtin::{change_directory, exit_shell, get_working_directory}};
 use crate::command::Command;
 
 impl Command {
@@ -18,7 +18,7 @@ impl Command {
     pub fn execute(&self, io_fds: &IoFds) -> Result<(), Box<dyn std::error::Error>>{
         
         match self {
-            Command::Simple( SimpleCommand{path: cmd_path, args: cmd_args} ) => {
+            Command::Simple{cmd_path, cmd_args} => {
 
                 match cmd_path.as_str() {
                     "exit" => exit_shell(0),
