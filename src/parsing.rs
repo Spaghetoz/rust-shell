@@ -52,7 +52,7 @@ fn parse(tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
             // If no special operator, simply put the word in the tokens group, and treat them later
             Token::Word(_) => visited_tokens.push(token.clone()), // TODO avoid clone
 
-            Token::RedirectOp(_) => todo!(),
+            Token::RedirectOp(operator) => return create_redirection_command(operator,&visited_tokens, &tokens[i+1..]),
             Token::Pipe => return create_pipe_command(&visited_tokens, &tokens[i+1..]),
         }   
     }
@@ -84,6 +84,21 @@ fn create_pipe_command(left_tokens: &[Token], right_tokens: &[Token]) -> Result<
         // Recursively parse the left and right tokens
         left: Box::new(parse(left_tokens)?),  
         right: Box::new(parse(right_tokens)?),
+    })
+
+}
+
+fn create_redirection_command(op: &RedirectionType, left_tokens: &[Token], right_tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
+
+    let Token::Word(file_path) = right_tokens.get(0).ok_or("missing word on the right of redirection")? else {
+        return Err("token on the right of redirection OP should be a Word".into());
+    };
+
+    Ok(Command::Redirection { 
+        kind: op.clone(), // TODO avoid clone 
+        // TODO handle commands on the right of the redirection, for example ls > out.txt | wc. because now we simply ignore the right_tokens
+        command: Box::new(parse(left_tokens)?), 
+        file: file_path.to_string()
     })
 
 }
