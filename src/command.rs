@@ -22,7 +22,7 @@ pub enum Command {
     },
 }
 
-
+#[derive(Clone)]
 pub enum RedirectionType {
     In,       // <
     Out,      // >

@@ -1,10 +1,13 @@
 
 use crate::command::{Command};
 
+// Use the RedirectionType enum for both the tokens (in the lexing) and the AST (in the Command enum)
+use crate::command::RedirectionType;
+
 #[derive(Clone)]
 pub enum Token {
     Word(String),
-    RedirectOp(String),
+    RedirectOp(RedirectionType),
     Pipe
 }
 
@@ -27,7 +30,10 @@ fn tokenize_input(input: &str) -> Vec<Token> {
 
     for word in input.split_whitespace() {
         tokens.push(match word {   
-            "<" | ">" | ">>" | "2>" => Token::RedirectOp(word.to_string()), // TODO token type for each variant instead of putting string in RedirectOp
+            "<" => Token::RedirectOp(RedirectionType::In), 
+            ">" => Token::RedirectOp(RedirectionType::Out),
+            ">>" => Token::RedirectOp(RedirectionType::Append),
+            "2>" => Token::RedirectOp(RedirectionType::Err),
             "|" => Token::Pipe,
             _ => Token::Word(word.to_string())
         }); 
