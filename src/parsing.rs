@@ -38,19 +38,21 @@ fn tokenize_input(input: &str) -> Vec<Token> {
 
 fn parse(tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
 
-    let mut tokens_group: Vec<Token> = Vec::new();
+    let mut visited_tokens: Vec<Token> = Vec::new();
 
-    for token in tokens.iter() {
+    for (i, token) in tokens.iter().enumerate() {
 
         match token {
             // If no special operator, simply put the word in the tokens group, and treat them later
-            Token::Word(_) => tokens_group.push(token.clone()), // TODO avoid clone
+            Token::Word(_) => visited_tokens.push(token.clone()), // TODO avoid clone
+
             Token::RedirectOp(_) => todo!(),
-            Token::Pipe => todo!(),
+            Token::Pipe => return create_pipe_command(&visited_tokens, &tokens[i+1..]),
         }   
     }
 
-    Ok(create_simple_command(&tokens_group)?)
+    // If there is no more tokens to process, it's a simple command
+    Ok(create_simple_command(&visited_tokens)?)
 }
 
 // Creates (if the tokens are well formed) a simple command
@@ -68,4 +70,14 @@ fn create_simple_command(tokens: &[Token]) -> Result<Command, Box<dyn std::error
         .collect::<Result<_, _>>()?;
 
     Ok(Command::Simple { cmd_path: cmd_path.clone(), cmd_args: cmd_args })
+}
+
+fn create_pipe_command(left_tokens: &[Token], right_tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
+
+    Ok(Command::Pipe {
+        // Recursively parse the left and right tokens
+        left: Box::new(parse(left_tokens)?),  
+        right: Box::new(parse(right_tokens)?),
+    })
+
 }
