@@ -1,5 +1,8 @@
 use std::io::{self, Write};
 
+mod interaction;
+
+use crate::cli::interaction::{Interaction, TerminalInteraction};
 use crate::command::{IoFds};
 use crate::parsing::{convert_to_command};
 use crate::command::builtin::get_working_directory;
@@ -11,6 +14,7 @@ pub fn run_cli() {
         stdout: 1,
         stderr: 2,
     };
+    let terminal = TerminalInteraction::new();
 
     println!(" ____            _     ____  _          _ _ ");
     println!("|  _ \\ _   _ ___| |_  / ___|| |__   ___| | |");
@@ -26,7 +30,13 @@ pub fn run_cli() {
         // Flush stdout to directly print without using \n (since stdout is line-buffered)
         io::stdout().flush().expect("stdout flush failed");  // TODO handle error
 
-        let user_input = receive_stdin_input();
+        let user_input = match terminal.receive_input() {
+            Ok(input) => input,
+            Err(err) => {
+                println!("input error: {err}");
+                continue;
+            }
+        };
 
         let input_command = match convert_to_command(&user_input) {
             Ok(command) => command,
@@ -41,18 +51,4 @@ pub fn run_cli() {
         }
     
     }
-}
-
-fn receive_stdin_input() -> String {
-
-    let mut input = String::new();
-    
-    io::stdin()
-        .read_line(&mut input)
-        .expect("Failed to read line");
-
-    input = input.trim().to_string();
-
-    input
-    
 }
