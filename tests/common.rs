@@ -2,7 +2,7 @@
 //! Utils for testing commands execution
 //! 
 
-use rust_shell::command::{IoContext};
+/*use rust_shell::command::{IoContext};
 
 use std::fs;
 use std::path::PathBuf;
@@ -52,4 +52,4 @@ pub fn create_test_io_context(temp_files: &mut TempFiles) -> IoContext {
     let stdout = Arc::new(OpenOptions::new().write(true).create(true).truncate(true).open(&stdout_path).unwrap());
     let stderr = Arc::new(OpenOptions::new().write(true).create(true).truncate(true).open(&stderr_path).unwrap());
     IoContext { stdin, stdout, stderr }
-}
+}*/

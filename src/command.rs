@@ -6,6 +6,7 @@
 pub mod execution;
 pub mod builtin;
 
+#[derive(PartialEq, Debug)]
 pub enum Command {
     Simple {
         cmd_path: String,
@@ -22,7 +23,7 @@ pub enum Command {
     },
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum RedirectionType {
     In,       // <
     Out,      // >

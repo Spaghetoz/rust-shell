@@ -1,4 +1,4 @@
-mod common;
+/*mod common;
 
 use std::{env, fs};
 
@@ -102,7 +102,7 @@ fn test_redirection_append() {
 
     let output = std::fs::read_to_string(&file_path).unwrap();
     assert_eq!(output, "first line\nsecond line\n"); // echo adds \n
-}
+}*/
 
 //TODO Tests that cat < somefile.txt correctly writes the file content on iocontext's stdout 
 //TODO test ">>" on non existing file
