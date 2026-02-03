@@ -10,7 +10,7 @@ pub fn exit_shell(exit_code: i32) {
 pub fn change_directory(to: &str) -> Result<(), Box<dyn std::error::Error>> {
     
     let path = std::path::Path::new(to);
-    std::env::set_current_dir(&path)?;
+    std::env::set_current_dir(path)?;
 
     Ok(())
 }

@@ -16,7 +16,7 @@ pub enum Token {
 pub fn convert_to_command(input: &str) -> Result<Command, Box<dyn std::error::Error>>  {
     
     // Turns the input in a vec of Strings 
-    let input_tokens = tokenize_input(&input);
+    let input_tokens = tokenize_input(input);
     // Turns the tokens into a command structure
     let command = parse(&input_tokens)?;
 
@@ -58,13 +58,13 @@ fn parse(tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
     }
 
     // If there is no more tokens to process, it's a simple command
-    Ok(create_simple_command(&visited_tokens)?)
+    create_simple_command(&visited_tokens)
 }
 
 // Creates (if the tokens are well formed) a simple command
 fn create_simple_command(tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
 
-    let Token::Word(cmd_path) = tokens.get(0).ok_or("missing first token")? else {
+    let Token::Word(cmd_path) = tokens.first().ok_or("missing first token")? else {
         return Err("expected a word token".into());
     };
 
@@ -75,7 +75,7 @@ fn create_simple_command(tokens: &[Token]) -> Result<Command, Box<dyn std::error
         })
         .collect::<Result<_, _>>()?;
 
-    Ok(Command::Simple { cmd_path: cmd_path.clone(), cmd_args: cmd_args })
+    Ok(Command::Simple { cmd_path: cmd_path.clone(), cmd_args })
 }
 
 fn create_pipe_command(left_tokens: &[Token], right_tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
@@ -90,7 +90,7 @@ fn create_pipe_command(left_tokens: &[Token], right_tokens: &[Token]) -> Result<
 
 fn create_redirection_command(op: &RedirectionType, left_tokens: &[Token], right_tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
 
-    let Token::Word(file_path) = right_tokens.get(0).ok_or("missing word on the right of redirection")? else {
+    let Token::Word(file_path) = right_tokens.first().ok_or("missing word on the right of redirection")? else {
         return Err("token on the right of redirection OP should be a Word".into());
     };
 

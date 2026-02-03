@@ -23,7 +23,7 @@ impl Command {
                 match cmd_path.as_str() {
                     "exit" => exit_shell(0),
                     // For now, cd takes no more arguments than the path
-                    "cd" => change_directory(&cmd_args.get(0).ok_or("cd: missing arg")?)?,
+                    "cd" => change_directory(cmd_args.first().ok_or("cd: missing arg")?)?,
                     "pwd" => {
                         let working_dir = get_working_directory()?;
                         let output = format!("{}\n", working_dir);
