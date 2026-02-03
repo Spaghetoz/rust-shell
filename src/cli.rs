@@ -10,7 +10,7 @@ use crate::command::builtin::get_working_directory;
 
 pub fn run_cli() {
 
-    let terminal = TerminalInteraction::new();
+    let mut terminal = TerminalInteraction::try_new().expect("error terminal interaction creation");
 
     println!(" ____            _     ____  _          _ _ ");
     println!("|  _ \\ _   _ ___| |_  / ___|| |__   ___| | |");
@@ -19,16 +19,17 @@ pub fn run_cli() {
     println!("|_| \\_\\\\__,_|___/\\__| |____/|_| |_|\\___|_|_|\n");
 
     loop {
-        if let Err(err) = cli_loop_step(&terminal) {
+        if let Err(err) = cli_loop_step(&mut terminal) {
             println!("{err}");
         }
     }
 }
 
 /// Processes a single step on a loop
-pub fn cli_loop_step(terminal: &dyn Interaction) -> Result<(), Box<dyn Error>>{
+pub fn cli_loop_step(terminal: &mut dyn Interaction) -> Result<(), Box<dyn Error>>{
 
     print_prompt_string();
+    println!("");
 
     let user_input = terminal.receive_input()
         // Propagate the error by specifying it is a user input error
