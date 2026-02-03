@@ -15,5 +15,6 @@
     - Basic redirections (<, >>, >>, 2>)
     - Pipes commands
 - Pipes chaining and partially redirections chaining
+- Enriched line editing thanks to the [Rusty lines](https://github.com/kkawakam/rustyline) library
 
 ### How to use : `cargo run` 
