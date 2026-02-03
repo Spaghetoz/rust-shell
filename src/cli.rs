@@ -1,12 +1,12 @@
 use std::error::Error;
-use std::io::{self, Write};
 
 mod interaction;
+mod terminal_interaction;
 
-use crate::cli::interaction::{Interaction, TerminalInteraction, UserInput};
+use crate::cli::interaction::{Interaction, UserInput};
+use crate::cli::terminal_interaction::TerminalInteraction;
 use crate::command::{IoFds};
 use crate::parsing::{convert_to_command};
-use crate::command::builtin::get_working_directory;
 
 pub fn run_cli() {
 
@@ -28,9 +28,6 @@ pub fn run_cli() {
 /// Processes a single step on a loop
 pub fn cli_loop_step(terminal: &mut dyn Interaction) -> Result<(), Box<dyn Error>>{
 
-    print_prompt_string();
-    println!("");
-
     let user_input = terminal.receive_input()
         // Propagate the error by specifying it is a user input error
         .map_err(|e| Box::<dyn std::error::Error>::from(format!("Input error: {}", e)))?;
@@ -49,17 +46,4 @@ pub fn cli_loop_step(terminal: &mut dyn Interaction) -> Result<(), Box<dyn Error
     }
 
     Ok(())
-}
-
-pub fn print_prompt_string() {
-    
-    let working_dir = get_working_directory()
-        .unwrap_or_else(|_| String::from("unknown"));
-
-    // Prints a pretty colored shell prompt
-    print!("$ \x1b[1;34m{}\x1b[0m> ", working_dir);
-    
-    // Flush stdout to directly print without using \n (since stdout is line-buffered)
-    io::stdout().flush().expect("stdout flush failed");  // TODO handle error
-
 }
