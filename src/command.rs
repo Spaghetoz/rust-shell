@@ -3,6 +3,8 @@
 //! 
 //! 
 
+use std::{fs::File, process::Stdio};
+
 pub mod execution;
 pub mod builtin;
 
@@ -34,9 +36,20 @@ pub enum RedirectionType {
 // TODO update comments
 /// Struct containing what stdin should be and where stdout and stderr should go.
 /// It may be used to specify redirections and pipe destinations, and be used for testing
-#[derive(Clone)]
-pub struct IoFds {
-    pub stdin: i32, 
-    pub stdout: i32,
-    pub stderr: i32,
+pub struct IoContext {
+    pub stdin: Stdio, 
+    pub stdout: Stdio,
+    pub stderr: Stdio,
+}
+
+impl IoContext {
+
+    pub fn new() -> Self {
+        IoContext { 
+            // By default use the parent process stdout stderr and stdout
+            stdin: Stdio::inherit(), 
+            stdout: Stdio::inherit(), 
+            stderr: Stdio::inherit() 
+        }
+    }
 }

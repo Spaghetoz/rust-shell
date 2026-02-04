@@ -5,7 +5,7 @@ mod terminal_interaction;
 
 use crate::cli::interaction::{Interaction, UserInput};
 use crate::cli::terminal_interaction::TerminalInteraction;
-use crate::command::{IoFds};
+use crate::command::{IoContext};
 use crate::parsing::{convert_to_command};
 
 pub fn run_cli() {
@@ -38,7 +38,7 @@ pub fn cli_loop_step(terminal: &mut dyn Interaction) -> Result<(), Box<dyn Error
             let input_command = convert_to_command(&input_string)
                 .map_err(|e| Box::<dyn std::error::Error>::from(format!("Parsing error: {}", e)))?;
             
-            input_command.execute(&IoFds {stdin: 0, stdout: 1, stderr: 2})
+            input_command.execute( IoContext::new() )
                 .map_err(|e| Box::<dyn std::error::Error>::from(format!("Execution error: {}", e)))?; 
 
         },
