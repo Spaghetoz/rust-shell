@@ -265,7 +265,7 @@ mod tests {
         assert_eq!(expected, result);
     }
 
-
+    // TODO test cases that should raise an error
     // TODO when implemented, test redirection before a pipe : cat < input.txt | head
     // TODO when implemented, test sticked pipe or redirection : echo hello|cat or echo hello>test.txt
 

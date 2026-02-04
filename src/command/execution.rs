@@ -51,44 +51,12 @@ impl Command {
 /// Executes a *simple command* by creating a child process
 fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_fds: &IoFds) -> Result<(), Box<dyn std::error::Error>> {  // TODO custom errors types
     
-    // Converts cmd and args into the libc format
-    let cmd = CString::new(cmd_path)?;
-    let mut cstrings: Vec<CString> = vec![cmd.clone()];  // argv[0] = command path
+    let mut cmd = std::process::Command::new(cmd_path)
+        .args(cmd_args)
+        .spawn()?;
 
-    for arg in cmd_args {
-        cstrings.push(CString::new(arg.as_str())?);
-    }
-
-    let mut argv: Vec<*const libc::c_char> = cstrings.iter().map(|c| c.as_ptr()).collect();
-    argv.push(ptr::null());
-
-    unsafe {
-
-        let pid : pid_t = fork();
-        if pid < 0 {
-            return Err("fork error".into());
-        } 
-        else if pid == 0 {
-
-            if dup2(io_fds.stdin, 0) < 0 || dup2(io_fds.stdout, 1) < 0 || dup2(io_fds.stderr, 2) < 0 {
-                eprintln!("dup2 failed");
-                std::process::exit(1);
-            }
-
-            execvp(cmd.as_ptr(), argv.as_ptr());
-            std::process::exit(1);
-            
-        } else {
-
-            let mut status: i32 = 0;
-            waitpid(pid, &mut status,0);
-                        
-            if !WIFEXITED(status) || WEXITSTATUS(status) != 0 {
-                return Err(format!("child process exited with status {}", libc::WEXITSTATUS(status)).into());
-            }
-        }
-
-    }
+        // TODO redirections
+    cmd.wait()?; // TODO return value
 
     Ok(())
 
@@ -97,7 +65,7 @@ fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_fds: &IoFds) -
 fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_path: &str, io_fds: &IoFds) -> Result<(), Box<dyn std::error::Error>>  {
 
     // Select the options creation/read depending on the kind 
-    let oflag = match kind {
+    /*let oflag = match kind {
         RedirectionType::In => O_RDONLY,
         RedirectionType::Out | RedirectionType::Err => O_TRUNC | O_CREAT | O_WRONLY,
         RedirectionType::Append => O_WRONLY | O_CREAT | O_APPEND,
@@ -125,14 +93,14 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
         return Err(err);
     }
 
-    unsafe {close(file_fd); }
+    unsafe {close(file_fd); }*/
 
     Ok(())
 }
 
 fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, io_fds: &IoFds) -> Result<(), Box<dyn std::error::Error>> {
 
-    let mut pipe_fds: [libc::c_int; 2] = [0; 2];
+    /*let mut pipe_fds: [libc::c_int; 2] = [0; 2];
     if unsafe { pipe(pipe_fds.as_mut_ptr())} < 0 {
         return Err("Pipe failed".into());
     }
@@ -184,7 +152,7 @@ fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, io_fds: &IoFds)
         if !WIFEXITED(status_right) || WEXITSTATUS(status_right) != 0 {
             return Err("Right command failed".into());
         }
-    }
+    }*/
 
     Ok(())
 }
