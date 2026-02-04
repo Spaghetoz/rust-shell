@@ -24,6 +24,7 @@ impl Command {
     /// like if it's a simple command, special command (exit, cd...), a pipe, etc...
     /// This function may recursively call the sub commands of &self by passing a transformed iocontext
     ///  TODO explain why passing iocontext ownership 
+    /// TODO explain return
     fn execute_recursive(&self, io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>>{
         
         match self {
@@ -64,9 +65,10 @@ fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_context: IoCon
 
     let cmd = std::process::Command::new(cmd_path)
         .args(cmd_args)
-        .stdin(io_context.stdin)
-        .stdout(io_context.stdout)
-        .stderr(io_context.stderr)
+        // If no io context, pass the parent process standard io 
+        .stdin(io_context.stdin.unwrap_or(Stdio::inherit()))
+        .stdout(io_context.stdout.unwrap_or(Stdio::inherit()))
+        .stderr(io_context.stderr.unwrap_or(Stdio::inherit()))
         .spawn()?;
 
 
@@ -93,9 +95,9 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
 
     let mut new_io_context = IoContext::new(); // TODO use io_context passed in arguments?
     match kind {
-        RedirectionType::In => new_io_context.stdin = Stdio::from(file),
-        RedirectionType::Out | RedirectionType::Append => new_io_context.stdout = Stdio::from(file),
-        RedirectionType::Err => new_io_context.stderr = Stdio::from(file),
+        RedirectionType::In => new_io_context.stdin = Some(Stdio::from(file)),
+        RedirectionType::Out | RedirectionType::Append => new_io_context.stdout = Some(Stdio::from(file)),
+        RedirectionType::Err => new_io_context.stderr = Some(Stdio::from(file)),
     }
     
     let child_process = command.execute_recursive(new_io_context)?;
@@ -103,63 +105,32 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
     Ok(child_process)
 }
 
-fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>> {
 
-    //exec
-    Ok(None)
+fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, mut io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>> {
 
+    let new_io_context = IoContext {
+        stdin: io_context.stdin.take(),
+        stdout: Some(Stdio::piped()),
+        stderr: io_context.stderr.take(),
+    };
 
-    /*let mut pipe_fds: [libc::c_int; 2] = [0; 2];
-    if unsafe { pipe(pipe_fds.as_mut_ptr())} < 0 {
-        return Err("Pipe failed".into());
-    }
+    let left = left_cmd.execute_recursive(new_io_context)?;
 
-    // Fork left
-    let pid_left = unsafe { fork() };
-    if pid_left < 0 {
-        return Err("fork error".into());
-    } else if pid_left == 0 {
-        // child left
-        unsafe {
-            close(pipe_fds[0]);
-            dup2(pipe_fds[1], 1); 
-            close(pipe_fds[1]);
-        }
-        left_cmd.execute(io_context)?;
-        std::process::exit(0);
-    }
+    let mut left_child_process = left.ok_or("Missing left child process")?;
 
-    // Fork right
-    let pid_right = unsafe { fork() };
-    if pid_right < 0 {
-        return Err("fork error".into());
-    } else if pid_right == 0 {
-        // child right
-        unsafe {
-            close(pipe_fds[1]); // close write side on the pipe
-            dup2(pipe_fds[0], 0); // redirection stdin -> read side
-            close(pipe_fds[0]);
-        }
-        right_cmd.execute(io_context)?;
-        std::process::exit(0);
-    }
+    let right_io_context = IoContext {
+        stdin: Some(Stdio::from(
+            left_child_process.stdout.take().ok_or("take error")?
+        )),
+        stdout: io_context.stdout.take(),
+        stderr: io_context.stderr.take(),
+    };
 
-    // Parent
-    unsafe {
-        close(pipe_fds[0]);
-        close(pipe_fds[1]);
+    let mut right_child_process = right_cmd.execute_recursive(right_io_context)?.ok_or("Missing right child")?;
 
-        // Wait both children to prevent them to being zombies
-        let mut status_left = 0;
-        let mut status_right = 0;
-        waitpid(pid_left, &mut status_left, 0);
-        waitpid(pid_right, &mut status_right, 0);
+    // Prevent the child from being zombie processes
+    right_child_process.wait()?;
+    left_child_process.wait()?;
 
-        if !WIFEXITED(status_left) || WEXITSTATUS(status_left) != 0 {
-            return Err("Left command failed".into());
-        }
-        if !WIFEXITED(status_right) || WEXITSTATUS(status_right) != 0 {
-            return Err("Right command failed".into());
-        }
-    }*/
+    Ok(Some(right_child_process))
 }

@@ -37,19 +37,19 @@ pub enum RedirectionType {
 /// Struct containing what stdin should be and where stdout and stderr should go.
 /// It may be used to specify redirections and pipe destinations, and be used for testing
 pub struct IoContext {
-    pub stdin: Stdio, 
-    pub stdout: Stdio,
-    pub stderr: Stdio,
+    // pass Stdio as Option to make consuming the ownership easier, None represent no special io  
+    pub stdin: Option<Stdio>, 
+    pub stdout: Option<Stdio>,
+    pub stderr: Option<Stdio>,
 }
 
 impl IoContext {
 
     pub fn new() -> Self {
         IoContext { 
-            // By default use the parent process stdout stderr and stdout
-            stdin: Stdio::inherit(), 
-            stdout: Stdio::inherit(), 
-            stderr: Stdio::inherit() 
+            stdin: None, 
+            stdout: None, 
+            stderr: None 
         }
     }
 }
