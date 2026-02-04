@@ -2,7 +2,7 @@
 //! 
 //! 
 
-use std::process::Stdio;
+use std::process::{Child, Stdio};
 use std::fs::OpenOptions;
 
 use crate::command::{IoContext, RedirectionType, builtin::{change_directory, exit_shell, get_working_directory}};
@@ -10,11 +10,21 @@ use crate::command::Command;
 
 impl Command {
 
-    /// Execute the command depending on its type, 
+    pub fn execute(&self, io_context: IoContext)-> Result<(), Box<dyn std::error::Error>> {
+
+        // Execute the command and waiting the child process if any
+        if let Some(mut child_process) = self.execute_recursive(io_context)? {
+            child_process.wait()?;
+        }
+
+        Ok(())
+    }
+
+    /// Execute the command depending on its type,  TODO update comment
     /// like if it's a simple command, special command (exit, cd...), a pipe, etc...
     /// This function may recursively call the sub commands of &self by passing a transformed iocontext
     ///  TODO explain why passing iocontext ownership 
-    pub fn execute(&self, io_context: IoContext) -> Result<(), Box<dyn std::error::Error>>{
+    fn execute_recursive(&self, io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>>{
         
         match self {
             Command::Simple{cmd_path, cmd_args} => {
@@ -24,47 +34,47 @@ impl Command {
                     // For now, cd takes no more arguments than the path
                     "cd" => change_directory(cmd_args.first().ok_or("cd: missing arg")?)?,
                     "pwd" => {
-                        // TODO update
-                        /*let working_dir = get_working_directory()?;
-                        let output = format!("{}\n", working_dir);
-                        unsafe {
-                            write(io_context.stdout, output.as_ptr() as *const libc::c_void, output.len());
-                        }*/
+                        let working_dir = get_working_directory()?;
+                        println!("{working_dir}"); // TODO write on io_context.stdout
                     },
-                    _ => execute_simple_command(cmd_path, cmd_args, io_context)?,
+                    _ => {
+                        return Ok(execute_simple_command(cmd_path, cmd_args, io_context)?); 
+                        
+                    },
                 }
             },
             Command::Redirection { kind, command, file } => {
-                execute_redirection_command(kind, command, file, io_context)?;
+                return Ok(execute_redirection_command(kind, command, file, io_context)?);
             },
             Command::Pipe { left, right } => {
-                execute_pipe_command(left, right, io_context)?;
+                return Ok(execute_pipe_command(left, right, io_context)?);
             }
             
         }
-        Ok(())
+
+        // No child process, so return None
+        Ok(None)
     }
 
 
 }
 
 /// Executes a *simple command* by creating a child process
-fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_context: IoContext) -> Result<(), Box<dyn std::error::Error>> {  // TODO custom errors types
+fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>> {  // TODO custom errors types
 
-    let mut cmd = std::process::Command::new(cmd_path)
+    let cmd = std::process::Command::new(cmd_path)
         .args(cmd_args)
         .stdin(io_context.stdin)
         .stdout(io_context.stdout)
         .stderr(io_context.stderr)
         .spawn()?;
 
-    cmd.wait()?; // TODO return value
 
-    Ok(())
+    Ok(Some(cmd))
 
 }
 
-fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_path: &str, io_context: IoContext) -> Result<(), Box<dyn std::error::Error>>  {
+fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_path: &str, io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>>  {
 
     // Select the options creation/read depending on the kind 
     let mut options = OpenOptions::new();
@@ -88,12 +98,16 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
         RedirectionType::Err => new_io_context.stderr = Stdio::from(file),
     }
     
-    command.execute(new_io_context)?;
+    let child_process = command.execute_recursive(new_io_context)?;
 
-    Ok(())
+    Ok(child_process)
 }
 
-fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, io_context: IoContext) -> Result<(), Box<dyn std::error::Error>> {
+fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>> {
+
+    //exec
+    Ok(None)
+
 
     /*let mut pipe_fds: [libc::c_int; 2] = [0; 2];
     if unsafe { pipe(pipe_fds.as_mut_ptr())} < 0 {
@@ -148,6 +162,4 @@ fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, io_context: IoC
             return Err("Right command failed".into());
         }
     }*/
-
-    Ok(())
 }
