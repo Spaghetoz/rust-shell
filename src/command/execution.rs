@@ -49,6 +49,9 @@ impl Command {
             },
             Command::Pipe { left, right } => {
                 return Ok(execute_pipe_command(left, right, io_context)?);
+            },
+            Command::Separator { left, right } => {
+                return Ok(execute_separator_command(left, right, io_context)?);
             }
             
         }
@@ -133,4 +136,19 @@ fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, mut io_context:
     left_child_process.wait()?;
 
     Ok(Some(right_child_process))
+}
+
+fn execute_separator_command(left_cmd: &Command, right_cmd: &Command, io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>> {
+
+    let mut left = left_cmd.execute_recursive(io_context)?; // TODO dont stop the right cmd execution if the left throws an error
+    if let Some(left_child) = &mut left {
+        left_child.wait()?;
+    }
+
+    let right_io_context = IoContext::new();
+    let mut right_child = right_cmd.execute_recursive(right_io_context)?.ok_or("Missing right child")?;
+
+    right_child.wait()?;
+
+    Ok(None)
 }

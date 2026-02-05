@@ -23,6 +23,18 @@ pub enum Command {
         command: Box<Command>,
         file: String,
     },
+    Separator { // ;
+        left: Box<Command>,
+        right: Box<Command>,
+    },    
+    /*LogicalOr { // ||
+        left: Box<Command>,
+        right: Box<Command>,
+    },
+    LogicalAnd { // &&
+        left: Box<Command>,
+        right: Box<Command>,
+    }*/
 }
 
 #[derive(Clone, PartialEq, Debug)]
