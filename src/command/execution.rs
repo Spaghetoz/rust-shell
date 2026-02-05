@@ -146,9 +146,11 @@ fn execute_separator_command(left_cmd: &Command, right_cmd: &Command, io_context
     }
 
     let right_io_context = IoContext::new();
-    let mut right_child = right_cmd.execute_recursive(right_io_context)?.ok_or("Missing right child")?;
+    let mut right = right_cmd.execute_recursive(right_io_context)?;
 
-    right_child.wait()?;
+    if let Some(right_child) = &mut right {
+        right_child.wait()?;
+    }
 
     Ok(None)
 }
