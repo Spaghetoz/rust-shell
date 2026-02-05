@@ -275,6 +275,30 @@ mod tests {
         assert_eq!(expected, result);
     }
 
+    #[test]
+    fn test_separator_command() {
+        let input = "ls / | cat ; echo hello".to_string();
+        let result = convert_to_command(&input).unwrap();
+
+        let expected = Command::Pipe { 
+            left: Box::new(Command::Simple { 
+                cmd_path: "ls".to_string(), 
+                cmd_args: vec!["/".to_string()] 
+            }), 
+            right: Box::new(Command::Separator { 
+                left: Box::new(Command::Simple { 
+                    cmd_path: "cat".to_string(), 
+                    cmd_args: vec![] 
+                }), 
+                right: Box::new(Command::Simple { 
+                    cmd_path: "echo".to_string(), 
+                    cmd_args: vec!["hello".to_string()] 
+                }), 
+            })
+        };
+        assert_eq!(expected, result);
+    }
+
     // TODO test cases that should raise an error
     // TODO when implemented, test redirection before a pipe : cat < input.txt | head
     // TODO when implemented, test sticked pipe or redirection : echo hello|cat or echo hello>test.txt
