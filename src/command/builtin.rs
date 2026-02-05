@@ -3,6 +3,10 @@
 //! for instance exit and cd
 //!  
 
+pub mod execution;
+
+
+// utils for builtin commands
 pub fn exit_shell(exit_code: i32) {
     std::process::exit(exit_code)
 }

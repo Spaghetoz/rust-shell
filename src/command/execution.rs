@@ -5,7 +5,8 @@
 use std::process::{Child, Stdio};
 use std::fs::OpenOptions;
 
-use crate::command::{IoContext, RedirectionType, builtin::{change_directory, exit_shell, get_working_directory}};
+use crate::command::builtin::execution::try_execute_builtin;
+use crate::command::{IoContext, RedirectionType};
 use crate::command::Command;
 
 impl Command {
@@ -30,19 +31,14 @@ impl Command {
         match self {
             Command::Simple{cmd_path, cmd_args} => {
 
-                match cmd_path.as_str() {
-                    "exit" => exit_shell(0),
-                    // For now, cd takes no more arguments than the path
-                    "cd" => change_directory(cmd_args.first().ok_or("cd: missing arg")?)?,
-                    "pwd" => {
-                        let working_dir = get_working_directory()?;
-                        println!("{working_dir}"); // TODO write on io_context.stdout
-                    },
-                    _ => {
-                        return Ok(execute_simple_command(cmd_path, cmd_args, io_context)?); 
-                        
-                    },
+                // Execute the built in command if it is 
+                if let Some(()) = try_execute_builtin(cmd_path, cmd_args, &io_context)? {
+                    // Built-in functions are not executed in child processes, so return None
+                    return Ok(None);
                 }
+                // If not treat it like any other simple command 
+                return Ok(execute_simple_command(cmd_path, cmd_args, io_context)?); 
+
             },
             Command::Redirection { kind, command, file } => {
                 return Ok(execute_redirection_command(kind, command, file, io_context)?);
@@ -55,9 +51,6 @@ impl Command {
             }
             
         }
-
-        // No child process, so return None
-        Ok(None)
     }
 
 

@@ -5,7 +5,7 @@ mod terminal_interaction;
 
 use crate::cli::interaction::{Interaction, UserInput};
 use crate::cli::terminal_interaction::TerminalInteraction;
-use crate::command::{Command, IoContext};
+use crate::command::{IoContext};
 use crate::parsing::{convert_to_command};
 
 pub fn run_cli() {
