@@ -56,12 +56,19 @@ pub struct IoContext {
 }
 
 impl IoContext {
-
+    
     pub fn new() -> Self {
         IoContext { 
             stdin: None, 
             stdout: None, 
             stderr: None 
         }
+    }
+}
+
+impl Default for IoContext {
+
+    fn default() -> Self {
+        Self::new()
     }
 }

@@ -37,17 +37,17 @@ impl Command {
                     return Ok(None);
                 }
                 // If not treat it like any other simple command 
-                return Ok(execute_simple_command(cmd_path, cmd_args, io_context)?); 
+                execute_simple_command(cmd_path, cmd_args, io_context)
 
             },
             Command::Redirection { kind, command, file } => {
-                return Ok(execute_redirection_command(kind, command, file, io_context)?);
+                execute_redirection_command(kind, command, file, io_context)
             },
             Command::Pipe { left, right } => {
-                return Ok(execute_pipe_command(left, right, io_context)?);
+                execute_pipe_command(left, right, io_context)
             },
             Command::Separator { left, right } => {
-                return Ok(execute_separator_command(left, right, io_context)?);
+                execute_separator_command(left, right, io_context)
             }
             
         }
@@ -89,7 +89,7 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
     }
     let file = options.open(file_path)?;
 
-    let mut new_io_context = IoContext::new(); // TODO use io_context passed in arguments?
+    let mut new_io_context = IoContext::default(); // TODO use io_context passed in arguments?
     match kind {
         RedirectionType::In => new_io_context.stdin = Some(Stdio::from(file)),
         RedirectionType::Out | RedirectionType::Append => new_io_context.stdout = Some(Stdio::from(file)),
@@ -138,7 +138,7 @@ fn execute_separator_command(left_cmd: &Command, right_cmd: &Command, io_context
         left_child.wait()?;
     }
 
-    let right_io_context = IoContext::new();
+    let right_io_context = IoContext::default();
     let mut right = right_cmd.execute_recursive(right_io_context)?;
 
     if let Some(right_child) = &mut right {
