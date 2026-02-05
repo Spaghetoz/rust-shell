@@ -4,14 +4,16 @@
 //! enriched user input (navigation in the input with arrow, shortcuts handling (ctrl c, selecting text, copy paste) etc...) 
 //! 
 //! 
-use std::{error::Error};
+use std::{env, error::Error, path::PathBuf};
 use rustyline::{DefaultEditor, error::ReadlineError};
 
 use crate::{cli::interaction::{Interaction, UserInput}, command::builtin::get_working_directory};
 
 // TODO more doc
 pub struct TerminalInteraction {
-    rusty_lines_editor: DefaultEditor
+
+    rusty_lines_editor: DefaultEditor,
+    history_path: PathBuf
 }
 
 
@@ -19,10 +21,16 @@ impl TerminalInteraction {
     
     pub fn try_new() -> Result<Self, Box<dyn std::error::Error>> {    
 
-        let rusty_lines_editor = DefaultEditor::new()?;
+        let mut rusty_lines_editor = DefaultEditor::new()?;
+
+        let mut temp_path: PathBuf = env::temp_dir();
+        // Creates a file in temporary folder (/tmp on linux for example) where the history will be saved
+        temp_path.push("rust_shell_history.txt");
+        let _ = rusty_lines_editor.load_history(&temp_path);
 
         Ok(TerminalInteraction {
-            rusty_lines_editor
+            rusty_lines_editor,
+            history_path: temp_path
         })
     }
         
@@ -51,7 +59,10 @@ impl Interaction for TerminalInteraction {
         let readline = self.rusty_lines_editor.readline(&self.get_prompt_string());
         match readline {
             Ok(line) => {
-                //rl.add_history_entry(line.as_str())?;
+                // side effect: saves the line in the history
+                self.rusty_lines_editor.add_history_entry(&line)?;
+                self.save_history()?;
+
                 Ok(UserInput::String(line))
             },
             Err(ReadlineError::Interrupted) => {
@@ -63,6 +74,7 @@ impl Interaction for TerminalInteraction {
     }
 
     fn save_history(&mut self) -> Result<(), Box<dyn Error>> {
-        todo!()
+        self.rusty_lines_editor.save_history(&self.history_path)?;
+        Ok(())
     }
 }
