@@ -8,7 +8,8 @@ use crate::command::RedirectionType;
 pub enum Token {
     Word(String),
     RedirectOp(RedirectionType),
-    Pipe
+    Pipe,
+    Separator
 }
 
 /// Converts a string representing a command into a Command structure
@@ -35,6 +36,7 @@ fn tokenize_input(input: &str) -> Vec<Token> {
             ">>" => Token::RedirectOp(RedirectionType::Append),
             "2>" => Token::RedirectOp(RedirectionType::Err),
             "|" => Token::Pipe,
+            ";" =>Token::Separator,
             _ => Token::Word(word.to_string())
         }); 
     }
@@ -48,12 +50,15 @@ fn parse(tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
 
     for (i, token) in tokens.iter().enumerate() {
 
+        let right_tokens = &tokens[i+1..];
+
         match token {
             // If no special operator, simply put the word in the tokens group, and treat them later
             Token::Word(_) => visited_tokens.push(token.clone()), // TODO avoid clone
 
-            Token::RedirectOp(operator) => return create_redirection_command(operator,&visited_tokens, &tokens[i+1..]),
-            Token::Pipe => return create_pipe_command(&visited_tokens, &tokens[i+1..]),
+            Token::RedirectOp(operator) => return create_redirection_command(operator,&visited_tokens, right_tokens),
+            Token::Pipe => return create_pipe_command(&visited_tokens, right_tokens),
+            Token::Separator => return create_separator_command(&visited_tokens, right_tokens),
         }   
     }
 
@@ -87,6 +92,14 @@ fn create_pipe_command(left_tokens: &[Token], right_tokens: &[Token]) -> Result<
     })
 
 }
+fn create_separator_command(left_tokens: &[Token], right_tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
+
+   Ok(Command::Separator {
+        left: Box::new(parse(left_tokens)?),  
+        right: Box::new(parse(right_tokens)?),
+    })
+}
+
 
 fn create_redirection_command(op: &RedirectionType, left_tokens: &[Token], right_tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
 
@@ -102,9 +115,6 @@ fn create_redirection_command(op: &RedirectionType, left_tokens: &[Token], right
     })
 
 }
-
-
-
 
 
 #[cfg(test)]
