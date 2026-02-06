@@ -16,6 +16,6 @@
     - Pipes commands
 - Commands chaining (with ;)
 - Pipes chaining and partially redirections chaining
-- Enriched line editing thanks to the [Rusty lines](https://github.com/kkawakam/rustyline) library
+- Enriched line editing and history thanks to the [Rusty lines](https://github.com/kkawakam/rustyline) library
 
 ### How to use : `cargo run` 
