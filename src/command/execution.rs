@@ -11,6 +11,9 @@ use crate::command::Command;
 
 impl Command {
 
+    /// Executes the command and waits for it to complete if necessary.
+    /// 
+    /// 
     pub fn execute(&self, io_context: IoContext)-> Result<(), Box<dyn std::error::Error>> {
 
         // Execute the command and waiting the child process if any
@@ -21,12 +24,17 @@ impl Command {
         Ok(())
     }
 
-    /// Execute the command depending on its type,  TODO update comment
-    /// like if it's a simple command, special command (exit, cd...), a pipe, etc...
-    /// This function may recursively call the sub commands of &self by passing a transformed iocontext
-    ///  TODO explain why passing iocontext ownership 
-    /// TODO explain return
+    /// Recursively executes the command depending on its type by propagating a transformed IO context.
+    /// 
+    /// Depending on the command variant, this function may executes a simple command, 
+    /// Or recursively call functions for composed commands like redirections, pipes etc...
+    /// 
+    /// Returns either :
+    /// - Ok(None) if there is no child process to wait (the case for the built-in commands)
+    /// - Ok(Some(_)) if there is a child process executed
+    /// - Err(_) if there is error during the command execution
     fn execute_recursive(&self, io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>>{
+        // `io_context`: Passed by ownership because it will be transformed throught the recursive calls
         
         match self {
             Command::Simple{cmd_path, cmd_args} => {
@@ -37,7 +45,7 @@ impl Command {
                     return Ok(None);
                 }
                 // If not treat it like any other simple command 
-                execute_simple_command(cmd_path, cmd_args, io_context)
+                Ok(Some(execute_simple_command(cmd_path, cmd_args, io_context)?))
 
             },
             Command::Redirection { kind, command, file } => {
@@ -56,8 +64,12 @@ impl Command {
 
 }
 
-/// Executes a *simple command* by creating a child process
-fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>> {  // TODO custom errors types
+/// Executes a simple command by creating a child process with the io_context as stdin/stdout/stderr
+/// This function does not executes built-in commands (such as pwd or cd)
+/// 
+/// Returns the child process executing the command
+/// 
+fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_context: IoContext) -> Result<Child, Box<dyn std::error::Error>> {  // TODO custom errors types
 
     let cmd = std::process::Command::new(cmd_path)
         .args(cmd_args)
@@ -68,8 +80,7 @@ fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_context: IoCon
         .spawn()?;
 
 
-    Ok(Some(cmd))
-
+    Ok(cmd)
 }
 
 fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_path: &str, io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>>  {
@@ -89,7 +100,7 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
     }
     let file = options.open(file_path)?;
 
-    let mut new_io_context = IoContext::default(); // TODO use io_context passed in arguments?
+    let mut new_io_context = IoContext::default(); // TODO use io_context passed in arguments
     match kind {
         RedirectionType::In => new_io_context.stdin = Some(Stdio::from(file)),
         RedirectionType::Out | RedirectionType::Append => new_io_context.stdout = Some(Stdio::from(file)),
@@ -135,7 +146,8 @@ fn execute_separator_command(left_cmd: &Command, right_cmd: &Command, io_context
 
     let mut left = left_cmd.execute_recursive(io_context)?; // TODO dont stop the right cmd execution if the left throws an error
     if let Some(left_child) = &mut left {
-        left_child.wait()?;
+        let status = left_child.wait()?;
+        println!("{status}");
     }
 
     let right_io_context = IoContext::default();

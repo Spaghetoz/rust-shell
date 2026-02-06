@@ -8,6 +8,10 @@ use std::{process::Stdio};
 pub mod execution;
 pub mod builtin;
 
+/// Represents a command executable by a shell.
+/// 
+/// This enum represents the abstract syntax tree of a shell command created by the parsing module.
+/// 
 #[derive(PartialEq, Debug)]
 pub enum Command {
     Simple {
@@ -45,11 +49,11 @@ pub enum RedirectionType {
     Err,      // 2>
 }
 
-// TODO update comments
 /// Struct containing what stdin should be and where stdout and stderr should go.
 /// It may be used to specify redirections and pipe destinations, and be used for testing
 pub struct IoContext {
-    // pass Stdio as Option to make consuming the ownership easier, None represent no special io  
+    // pass Stdio as Option to make consuming the ownership easier, 
+    // None represents a IO that will be inherited from parent during execution 
     pub stdin: Option<Stdio>, 
     pub stdout: Option<Stdio>,
     pub stderr: Option<Stdio>,
