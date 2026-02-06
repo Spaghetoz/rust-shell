@@ -5,6 +5,7 @@ mod terminal_interaction;
 
 use crate::cli::interaction::{Interaction, UserInput};
 use crate::cli::terminal_interaction::TerminalInteraction;
+use crate::command::builtin::exit_shell;
 use crate::command::{IoContext};
 use crate::parsing::{convert_to_command};
 
@@ -43,6 +44,10 @@ pub fn cli_loop_step(terminal: &mut dyn Interaction) -> Result<(), Box<dyn Error
 
         },
         UserInput::Interruption => todo!(), 
+        UserInput::Eof => {
+            println!("exit");
+            exit_shell(0)
+        },
     }
 
     Ok(())

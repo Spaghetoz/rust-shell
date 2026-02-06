@@ -15,6 +15,7 @@ pub trait Interaction {
 pub enum UserInput {
     String(String),
     Interruption, // ctrl c
+    Eof
 }
 
 // TODO custom errors

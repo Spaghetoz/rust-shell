@@ -68,6 +68,9 @@ impl Interaction for TerminalInteraction {
             Err(ReadlineError::Interrupted) => {
                 Ok(UserInput::Interruption)
             },
+            Err(ReadlineError::Eof) => {
+                Ok(UserInput::Eof)
+            }
             Err(_) => Ok(UserInput::String("".to_string()))  // TODO handle other cases
         }
 
