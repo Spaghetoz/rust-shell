@@ -9,18 +9,22 @@ use rustyline::{DefaultEditor, error::ReadlineError};
 
 use crate::{cli::interaction::{Interaction, UserInput}, command::builtin::get_working_directory};
 
-// TODO more doc
-pub struct TerminalInteraction {
-
+/// Represents what an interaction via the terminal with the users contains.
+/// 
+/// 
+pub struct TerminalInteraction { 
     rusty_lines_editor: DefaultEditor,
+    // The path to the file where the history is saved
     history_path: PathBuf
 }
 
-
 impl TerminalInteraction {
     
+    /// Attempts to create a new TerminalInteraction instance, returns an error if any error occurs during creation
+    /// 
     pub fn try_new() -> Result<Self, Box<dyn std::error::Error>> {    
 
+        // The creation of rusty_lines objects may fail 
         let mut rusty_lines_editor = DefaultEditor::new()?;
 
         let mut temp_path: PathBuf = env::temp_dir();
@@ -34,7 +38,8 @@ impl TerminalInteraction {
         })
     }
         
-    // Returns the prefix on the left of the user input
+    /// Returns the prefix on the left of the user input with the following format: `$ currentdirectory>`
+    /// 
     fn get_prompt_string(&self) -> String {
 
         let mut prompt_string = String::new();
@@ -52,7 +57,9 @@ impl TerminalInteraction {
 
 impl Interaction for TerminalInteraction {
 
-    /// Returns the String entered by the user on the stdin
+    /// Returns the input entered by the user on the stdin
+    /// 
+    /// Side effects: Prints the prompt string and modifies some attributes in the struct 
     fn receive_input(&mut self) -> Result<UserInput, Box<dyn Error>> {
 
         // side effect: also prints the prompt string
@@ -76,6 +83,8 @@ impl Interaction for TerminalInteraction {
 
     }
 
+    /// Save the previous inputs strings in the history, returns an error if any problem occurs during the saving
+    /// 
     fn save_history(&mut self) -> Result<(), Box<dyn Error>> {
         self.rusty_lines_editor.save_history(&self.history_path)?;
         Ok(())

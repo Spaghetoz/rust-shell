@@ -1,6 +1,6 @@
 
 //!
-//! Module related with the interactions between the user and the terminal. 
+//! Module related with the interactions between with the user. 
 //! 
 
 use std::{error::Error};
@@ -15,7 +15,7 @@ pub trait Interaction {
 pub enum UserInput {
     String(String),
     Interruption, // ctrl c
-    Eof
+    Eof           // ctrl d
 }
 
 // TODO custom errors
