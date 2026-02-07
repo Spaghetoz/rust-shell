@@ -43,7 +43,7 @@ pub fn cli_loop_step(terminal: &mut dyn Interaction) -> Result<(), Box<dyn Error
                 .map_err(|e| Box::<dyn std::error::Error>::from(format!("Execution error: {}", e)))?; 
 
         },
-        UserInput::Interruption => todo!(), 
+        UserInput::NoSpecialInput => (), // If no special input, ignore it
         UserInput::Eof => {
             println!("exit");
             exit_shell(0)

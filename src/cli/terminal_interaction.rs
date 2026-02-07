@@ -73,12 +73,12 @@ impl Interaction for TerminalInteraction {
                 Ok(UserInput::String(line))
             },
             Err(ReadlineError::Interrupted) => {
-                Ok(UserInput::Interruption)
+                Ok(UserInput::NoSpecialInput) // if it is ctrl c, just ignore it
             },
             Err(ReadlineError::Eof) => {
                 Ok(UserInput::Eof)
             }
-            Err(_) => Ok(UserInput::String("".to_string()))  // TODO handle other cases
+            Err(_) => Ok(UserInput::NoSpecialInput)  // if it is another error, just ignore it
         }
 
     }

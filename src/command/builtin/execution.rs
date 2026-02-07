@@ -17,7 +17,7 @@ use crate::command::builtin::*;
 /// - Ok(None) else
 /// - Err(_) if an error occured during execution
 ///  
-pub fn try_execute_builtin(cmd_path: &str, cmd_args: &[String], io_context: &IoContext) -> Result<Option<()>, Box<dyn Error>> {
+pub fn try_execute_builtin(cmd_path: &str, cmd_args: &[String], _io_context: &IoContext) -> Result<Option<()>, Box<dyn Error>> {
     
     match cmd_path {
         "exit" => exit_shell(0),

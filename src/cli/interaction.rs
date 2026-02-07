@@ -14,8 +14,8 @@ pub trait Interaction {
 /// Represents what a user input could be, it could be just a string, or an action 
 pub enum UserInput {
     String(String),
-    Interruption, // ctrl c
-    Eof           // ctrl d
+    Eof,          // ctrl d
+    NoSpecialInput // a generic variant when no special action should happen
 }
 
 // TODO custom errors

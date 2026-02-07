@@ -100,7 +100,7 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
     }
     let file = options.open(file_path)?;
 
-    let mut new_io_context = IoContext::default(); // TODO use io_context passed in arguments
+    let mut new_io_context = io_context; 
     match kind {
         RedirectionType::In => new_io_context.stdin = Some(Stdio::from(file)),
         RedirectionType::Out | RedirectionType::Append => new_io_context.stdout = Some(Stdio::from(file)),
