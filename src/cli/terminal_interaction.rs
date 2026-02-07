@@ -65,6 +65,10 @@ impl Interaction for TerminalInteraction {
         // side effect: also prints the prompt string
         let readline = self.rusty_lines_editor.readline(&self.get_prompt_string());
         match readline {
+            // do nothing if the string is empty or is a bunch of spaces
+            Ok(s) if s.trim().is_empty() => {
+                Ok(UserInput::NoSpecialInput) 
+            },
             Ok(line) => {
                 // side effect: saves the line in the history
                 self.rusty_lines_editor.add_history_entry(&line)?;
