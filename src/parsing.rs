@@ -54,7 +54,7 @@ fn parse(tokens: &[Token]) -> Result<Command, ParsingError> {
 
         match token {
             // If no special operator, simply put the word in the tokens group, and treat them later
-            Token::Word(_) => visited_tokens.push(token.clone()), // TODO avoid clone
+            Token::Word(_) => visited_tokens.push(token.clone()), 
 
             Token::RedirectOp(operator) => return create_redirection_command(operator,&visited_tokens, right_tokens),
             Token::Pipe => return create_pipe_command(&visited_tokens, right_tokens),
@@ -75,7 +75,7 @@ fn create_simple_command(tokens: &[Token]) -> Result<Command, ParsingError> {
 
     let cmd_args: Vec<String> = tokens[1..].iter().map(|token| 
         match token {
-            Token::Word(arg) => Ok(arg.clone()), // TODO avoid clone
+            Token::Word(arg) => Ok(arg.clone()),// clone because the Command structure needs to own the argument
             _ => Err(ParsingError::UnexpectedToken("command argument should be a word".to_string())),
         })
         .collect::<Result<_, _>>()?;
@@ -108,7 +108,7 @@ fn create_redirection_command(op: &RedirectionType, left_tokens: &[Token], right
     };
 
     Ok(Command::Redirection { 
-        kind: op.clone(), // TODO avoid clone 
+        kind: op.clone(), 
         // TODO handle commands on the right of the redirection, for example ls > out.txt | wc. because now we simply ignore the right_tokens
         command: Box::new(parse(left_tokens)?), 
         file: file_path.to_string()
