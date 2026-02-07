@@ -44,7 +44,7 @@ fn tokenize_input(input: &str) -> Vec<Token> {
     tokens
 }
 
-fn parse(tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
+fn parse(tokens: &[Token]) -> Result<Command, ParsingError> {
 
     let mut visited_tokens: Vec<Token> = Vec::new();
 
@@ -67,23 +67,23 @@ fn parse(tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
 }
 
 // Creates (if the tokens are well formed) a simple command
-fn create_simple_command(tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
+fn create_simple_command(tokens: &[Token]) -> Result<Command, ParsingError> {
 
-    let Token::Word(cmd_path) = tokens.first().ok_or("missing first token")? else {
-        return Err("expected a word token".into());
+    let Token::Word(cmd_path) = tokens.first().ok_or(ParsingError::MissingToken("expected a command path".to_string()))? else {
+        return Err(ParsingError::UnexpectedToken("command path should be a word".to_string()));
     };
 
     let cmd_args: Vec<String> = tokens[1..].iter().map(|token| 
         match token {
             Token::Word(arg) => Ok(arg.clone()), // TODO avoid clone
-            _ => Err("token should be a word"),
+            _ => Err(ParsingError::UnexpectedToken("command argument should be a word".to_string())),
         })
         .collect::<Result<_, _>>()?;
 
     Ok(Command::Simple { cmd_path: cmd_path.clone(), cmd_args })
 }
 
-fn create_pipe_command(left_tokens: &[Token], right_tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
+fn create_pipe_command(left_tokens: &[Token], right_tokens: &[Token]) -> Result<Command, ParsingError> {
 
     Ok(Command::Pipe {
         // Recursively parse the left and right tokens
@@ -92,7 +92,7 @@ fn create_pipe_command(left_tokens: &[Token], right_tokens: &[Token]) -> Result<
     })
 
 }
-fn create_separator_command(left_tokens: &[Token], right_tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
+fn create_separator_command(left_tokens: &[Token], right_tokens: &[Token]) -> Result<Command, ParsingError> {
 
    Ok(Command::Separator {
         left: Box::new(parse(left_tokens)?),  
@@ -101,10 +101,10 @@ fn create_separator_command(left_tokens: &[Token], right_tokens: &[Token]) -> Re
 }
 
 
-fn create_redirection_command(op: &RedirectionType, left_tokens: &[Token], right_tokens: &[Token]) -> Result<Command, Box<dyn std::error::Error>> {
+fn create_redirection_command(op: &RedirectionType, left_tokens: &[Token], right_tokens: &[Token]) -> Result<Command, ParsingError> {
 
-    let Token::Word(file_path) = right_tokens.first().ok_or("missing word on the right of redirection")? else {
-        return Err("token on the right of redirection OP should be a Word".into());
+    let Token::Word(file_path) = right_tokens.first().ok_or(ParsingError::MissingToken("expected a file path".to_string()))? else {
+        return Err(ParsingError::UnexpectedToken("file path should be a word".to_string()));
     };
 
     Ok(Command::Redirection { 
@@ -116,6 +116,16 @@ fn create_redirection_command(op: &RedirectionType, left_tokens: &[Token], right
 
 }
 
+
+#[derive(thiserror::Error, Debug)]
+pub enum ParsingError {
+
+    #[error("A token is missing: {0}")]
+    MissingToken(String),
+
+    #[error("Unexpected token: {0}")]
+    UnexpectedToken(String),
+}
 
 #[cfg(test)]
 mod tests {
