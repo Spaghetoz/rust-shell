@@ -9,7 +9,9 @@ pub enum Token {
     Word(String),
     RedirectOp(RedirectionType),
     Pipe,
-    Separator
+    Separator,
+    And,
+    Or,
 }
 
 /// Converts a string representing a command into a Command structure
@@ -37,6 +39,8 @@ fn tokenize_input(input: &str) -> Vec<Token> {
             "2>" => Token::RedirectOp(RedirectionType::Err),
             "|" => Token::Pipe,
             ";" =>Token::Separator,
+            "||" => Token::Or,
+            "&&" => Token::And,
             _ => Token::Word(word.to_string())
         }); 
     }
@@ -59,6 +63,8 @@ fn parse(tokens: &[Token]) -> Result<Command, ParsingError> {
             Token::RedirectOp(operator) => return create_redirection_command(operator,&visited_tokens, right_tokens),
             Token::Pipe => return create_pipe_command(&visited_tokens, right_tokens),
             Token::Separator => return create_separator_command(&visited_tokens, right_tokens),
+            Token::Or => return create_logical_command(&visited_tokens, right_tokens, |l, r| Command::LogicalOr { left: l, right: r }),
+            Token::And => return create_logical_command(&visited_tokens, right_tokens,  |l, r| Command::LogicalAnd { left: l, right: r }),
         }   
     }
 
@@ -116,6 +122,13 @@ fn create_redirection_command(op: &RedirectionType, left_tokens: &[Token], right
 
 }
 
+// TODO manage priority with logical and
+fn create_logical_command(left_tokens: &[Token], right_tokens: &[Token], op: impl Fn(Box<Command>, Box<Command>) -> Command) -> Result<Command, ParsingError> {
+    Ok(op(
+        Box::new(parse(left_tokens)?),
+        Box::new(parse(right_tokens)?),
+    ))
+}
 
 #[derive(thiserror::Error, Debug)]
 pub enum ParsingError {

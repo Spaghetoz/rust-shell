@@ -31,14 +31,14 @@ pub enum Command {
         left: Box<Command>,
         right: Box<Command>,
     },    
-    /*LogicalOr { // ||
+    LogicalOr { // ||
         left: Box<Command>,
         right: Box<Command>,
     },
     LogicalAnd { // &&
         left: Box<Command>,
         right: Box<Command>,
-    }*/
+    }
 }
 
 #[derive(Clone, PartialEq, Debug)]

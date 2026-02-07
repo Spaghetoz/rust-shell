@@ -56,6 +56,12 @@ impl Command {
             },
             Command::Separator { left, right } => {
                 execute_separator_command(left, right, io_context)
+            },
+            Command::LogicalOr { left, right } => {
+                execute_logical_op_command(left, right, io_context, true)
+            },
+            Command::LogicalAnd { left, right } => {
+                execute_logical_op_command(left, right, io_context, false)
             }
             
         }
@@ -164,6 +170,46 @@ fn execute_separator_command(left_cmd: &Command, right_cmd: &Command, io_context
     Ok(None)
 }
 
+/// Executes either the || or the && operator command depending on the `or` argument
+fn execute_logical_op_command(left_cmd: &Command, right_cmd: &Command, io_context: IoContext, or: bool ) -> Result<Option<Child>, ExecutionError> {
+
+    let left = left_cmd.execute_recursive(io_context);
+    
+    let is_left_success : bool = match left {
+        Ok(Some(mut child)) => {
+            let status = child.wait()?;
+            if status.success() {
+                true
+            } else {
+                false
+            }
+        },
+        Err(err) => {
+            eprintln!("{err}");
+            false
+        },
+        Ok(None) => true // todo handle this case
+    };
+
+    // if it's the || operator, the left should be a failure to execute the next commands
+    // if it's the && operator, the left should be a success to execute the next commands
+    let should_run_right = match or {
+        true => !is_left_success,
+        false => is_left_success
+    };
+
+    if should_run_right {
+
+        let right_io_context = IoContext::default();
+        let mut right = right_cmd.execute_recursive(right_io_context)?;
+
+        if let Some(right_child) = &mut right {
+            right_child.wait()?;
+        }
+
+    }
+    Ok(None)
+}
 
 
 #[derive(thiserror::Error, Debug)]
