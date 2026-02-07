@@ -14,7 +14,7 @@ impl Command {
     /// Executes the command and waits for it to complete if necessary.
     /// 
     /// 
-    pub fn execute(&self, io_context: IoContext)-> Result<(), Box<dyn std::error::Error>> {
+    pub fn execute(&self, io_context: IoContext)-> Result<(), ExecutionError> {
 
         // Execute the command and waiting the child process if any
         if let Some(mut child_process) = self.execute_recursive(io_context)? {
@@ -33,14 +33,14 @@ impl Command {
     /// - Ok(None) if there is no child process to wait (the case for the built-in commands)
     /// - Ok(Some(_)) if there is a child process executed
     /// - Err(_) if there is error during the command execution
-    fn execute_recursive(&self, io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>>{
+    fn execute_recursive(&self, io_context: IoContext) -> Result<Option<Child>, ExecutionError>{
         // `io_context`: Passed by ownership because it will be transformed throught the recursive calls
         
         match self {
             Command::Simple{cmd_path, cmd_args} => {
 
                 // Execute the built in command if it is 
-                if let Some(()) = try_execute_builtin(cmd_path, cmd_args, &io_context)? {
+                if let Some(()) = try_execute_builtin(cmd_path, cmd_args, &io_context).map_err(|_| ExecutionError::BuiltinExecError )? { // TODO more detail from builtin error
                     // Built-in functions are not executed in child processes, so return None
                     return Ok(None);
                 }
@@ -69,9 +69,9 @@ impl Command {
 /// 
 /// Returns the child process executing the command
 /// 
-fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_context: IoContext) -> Result<Child, Box<dyn std::error::Error>> {  // TODO custom errors types
+fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_context: IoContext) -> Result<Child, ExecutionError> {  
 
-    let cmd = std::process::Command::new(cmd_path)
+    let child = std::process::Command::new(cmd_path)
         .args(cmd_args)
         // If no io context, pass the parent process standard io 
         .stdin(io_context.stdin.unwrap_or(Stdio::inherit()))
@@ -79,11 +79,11 @@ fn execute_simple_command(cmd_path: &str, cmd_args: &[String], io_context: IoCon
         .stderr(io_context.stderr.unwrap_or(Stdio::inherit()))
         .spawn()?;
 
+    Ok(child)
 
-    Ok(cmd)
 }
 
-fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_path: &str, io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>>  {
+fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_path: &str, io_context: IoContext) -> Result<Option<Child>, ExecutionError>  {
 
     // Select the options creation/read depending on the kind 
     let mut options = OpenOptions::new();
@@ -113,7 +113,7 @@ fn execute_redirection_command(kind: &RedirectionType, command: &Command, file_p
 }
 
 
-fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, mut io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>> {
+fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, mut io_context: IoContext) -> Result<Option<Child>, ExecutionError> {
 
     let new_io_context = IoContext {
         stdin: io_context.stdin.take(),
@@ -123,17 +123,17 @@ fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, mut io_context:
 
     let left = left_cmd.execute_recursive(new_io_context)?;
 
-    let mut left_child_process = left.ok_or("Missing left child process")?;
+    let mut left_child_process = left.ok_or(ExecutionError::MissingChildProcess)?;
 
     let right_io_context = IoContext {
         stdin: Some(Stdio::from(
-            left_child_process.stdout.take().ok_or("take error")?
+            left_child_process.stdout.take().ok_or(ExecutionError::IoContextError)?
         )),
         stdout: io_context.stdout.take(),
         stderr: io_context.stderr.take(),
     };
 
-    let mut right_child_process = right_cmd.execute_recursive(right_io_context)?.ok_or("Missing right child")?;
+    let mut right_child_process = right_cmd.execute_recursive(right_io_context)?.ok_or(ExecutionError::MissingChildProcess)?;
 
     // Prevent the child from being zombie processes
     right_child_process.wait()?;
@@ -142,12 +142,16 @@ fn execute_pipe_command(left_cmd: &Command, right_cmd: &Command, mut io_context:
     Ok(Some(right_child_process))
 }
 
-fn execute_separator_command(left_cmd: &Command, right_cmd: &Command, io_context: IoContext) -> Result<Option<Child>, Box<dyn std::error::Error>> {
+fn execute_separator_command(left_cmd: &Command, right_cmd: &Command, io_context: IoContext) -> Result<Option<Child>, ExecutionError> {
 
-    let mut left = left_cmd.execute_recursive(io_context)?; // TODO dont stop the right cmd execution if the left throws an error
-    if let Some(left_child) = &mut left {
-        let status = left_child.wait()?;
-        println!("{status}");
+    let left = left_cmd.execute_recursive(io_context);
+    
+    match left {
+        Ok(Some(mut child)) => {
+            child.wait()?;
+        },
+        Err(err) => eprintln!("{err}"),
+        Ok(None) => ()
     }
 
     let right_io_context = IoContext::default();
@@ -158,4 +162,22 @@ fn execute_separator_command(left_cmd: &Command, right_cmd: &Command, io_context
     }
 
     Ok(None)
+}
+
+
+
+#[derive(thiserror::Error, Debug)]
+pub enum ExecutionError {
+
+    #[error("Command execution error: {0}")]
+    CommandError(#[from] std::io::Error),
+
+    #[error("Error occured during built-in command execution")]
+    BuiltinExecError,
+
+    #[error("Execution error with IO")]
+    IoContextError,
+
+    #[error("Expected a child process")]
+    MissingChildProcess
 }
