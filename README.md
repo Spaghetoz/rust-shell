@@ -4,18 +4,57 @@
 
 ### A basic unix shell made with Rust
 
+<br>
+
+```shell
+# Shell behavior demonstration: redirections, pipes and logical operators
+
+# Basic navigation
+$ /home> cd folder
+$ /home/folder> ls 
+text_file.txt
+
+# Command redirection (append)
+$ /home/folder> ls -l -a >> text_file.txt
+
+# Pipe and redirection combination
+$ /home/folder> cat text_file.txt | wc -l > file.txt
+
+# Sequential execution with ;
+$ /home/folder> echo hello ; inexistant_program ; echo hello2
+hello
+Command execution error: No such file or directory
+hello2
+
+# Conditionnal execution with &&
+$ /home/folder> echo hello && inexistant_program && echo hello2
+hello
+Command execution error: No such file or directory
+
+# Conditionnal execution with ||
+$ /home/folder> inexistant_program || echo hello || echo hello2
+Command execution error: No such file or directory
+hello
+
+# Pipes chaining
+$ /home/folder> cat text_file.txt | wc -l | head
+4
+$ /home/folder> exit
+```
+
+
 ### Supported platforms: 
 - Linux (tested on Ubuntu WSL)
 - Maybe MacOS
 
 ### Features
-- Commands parsing
+- Basic commands lexing and parsing
 - Commands execution : 
     - Simple commands (for example `ls -l /`)
-    - Basic redirections (<, >>, >>, 2>)
+    - Redirections (<, >>, >>, 2>)
     - Pipes commands
-- Commands chaining (with ;)
-- Pipes chaining and partially redirections chaining
+- Commands chaining (; && ||)
+- Pipes chaining
 - Enriched line editing and history thanks to the [Rusty lines](https://github.com/kkawakam/rustyline) library
 
 ### How to use : `cargo run` 
